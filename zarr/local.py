@@ -37,6 +37,9 @@ sc = spark.sparkContext
 
 chunks = sc.parallelize(((0, 0), (1, 0)), 2)
 
+input_file = '/Users/tom/workspace/hdf5-experiments/zarr/data/mini.zarr'
+output_file = '/Users/tom/workspace/hdf5-experiments/zarr/data/svd.zarr'
+
 def noop(x):
     pass
 
@@ -44,17 +47,26 @@ def pr(x):
     print(x, type(x))
 
 def read_chunk(x):
-    z = zarr.open('/Users/tom/workspace/hdf5-experiments/zarr/data/mini.zarr', mode='r')
+    """
+    Read a zarr chunk specified by coordinates x=(a,b) (2D-only).
+    """
+    z = zarr.open(input_file, mode='r')
     chunk_size = z.chunks
     return z[chunk_size[0]*x[0]:chunk_size[0]*(x[0]+1),chunk_size[1]*x[1]:chunk_size[1]*(x[1]+1)]
 
 chunks.map(read_chunk).foreach(pr)
 
 def ndarray_to_vector(arr):
+    """
+    Convert a numpy array to a Spark Vector
+    """
     return map(lambda row : Vectors.dense(row), arr.tolist())
 
-def vectors_to_ndarray(vs):
-    return [np.array([v.toArray() for v in vs])]
+def vectors_to_ndarray(index, vs):
+    """
+    Convert a partition index and list of Spark Vectors to a pair of index and numpy array.
+    """
+    return [(index, np.array([v.toArray() for v in vs]))]
 
 vec = chunks.map(read_chunk).flatMap(ndarray_to_vector)
 mat = RowMatrix(vec)
@@ -64,19 +76,22 @@ u = svd.U # U has original number of rows (3) and projected number of cols (2)
 u.rows.mapPartitions(vectors_to_ndarray).foreach(pr)
 
 # Create a new Zarr file, but only write metadata
-z = zarr.open('/Users/tom/workspace/hdf5-experiments/zarr/data/svd.zarr', mode='w', shape=(3, 2),
+z = zarr.open(output_file, mode='w', shape=(3, 2),
               chunks=(2, 2), dtype='f8', compressor=None)
 
 # Write each partition in a task
-def write_chunk(index, x):
-    print(index, x)
-    z = zarr.open('/Users/tom/workspace/hdf5-experiments/zarr/data/svd.zarr', mode='r+')
+def write_chunk(x):
+    """
+    Write a partition index and numpy array to a zarr store. The array must be the size of a chunk, and not
+    overlap other chunks
+    """
+    index, arr = x
+    z = zarr.open(output_file, mode='r+')
     chunk_size = z.chunks
-    z[chunk_size[0]*index:chunk_size[0]*(index+1),:] = x[0]
-    return [1,2]
+    z[chunk_size[0]*index:chunk_size[0]*(index+1),:] = arr
 
-u.rows.mapPartitions(vectors_to_ndarray).mapPartitionsWithIndex(write_chunk).foreach(noop)
+u.rows.mapPartitionsWithIndex(vectors_to_ndarray).foreach(write_chunk)
 
 # Read back locally
-z = zarr.open('/Users/tom/workspace/hdf5-experiments/zarr/data/svd.zarr', mode='r')
+z = zarr.open(output_file, mode='r')
 z[:]
