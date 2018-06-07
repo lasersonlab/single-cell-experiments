@@ -14,3 +14,11 @@ other words, the chunk width is the same as the row width.
 be able to be more sophisticated with a clever Spark coalescer that can read from other partitions.
 * Matrix multiplication. Multiplying by a matrix on the right preserves partitioning, so only chunk width needs to
 change.
+
+## Docker
+
+```bash
+docker build -t zarr .
+docker run -it -v ~/Downloads:/Downloads --name zarr zarr /bin/bash
+docker rm zarr
+```
