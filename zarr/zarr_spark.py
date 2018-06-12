@@ -44,6 +44,27 @@ def write_chunk(file):
         z[chunk_size[0]*index:chunk_size[0]*(index+1),:] = arr
     return write_one_chunk
 
+def zarr_file(sc, file):
+    """
+    Read a zarr file as an RDD of numpy arrays.
+    :param sc: spark context
+    :param file: file path
+    :return: an RDD of numpy arrays
+    """
+    z = zarr.open(file, mode='r')
+    ci = get_chunk_indices(z)
+    chunk_indices = sc.parallelize(ci, len(ci))
+    return chunk_indices.map(read_chunk(file))
+
+def save_as_zarr_file(zarr_rdd, file):
+    """
+    Write an RDD of numpy arrays as a zarr file. Note that the file must already
+    exist so that shape, chunk information etc is set appropriately (by the caller).
+    :param zarr_rdd: n RDD of numpy arrays
+    :param file: file path
+    """
+    zarr_rdd.foreach(write_chunk(file))
+
 def ndarray_to_vector(arr):
     """
     Convert a numpy array to a Spark Vector.

@@ -37,16 +37,17 @@ spark = SparkSession \
     .getOrCreate()
 sc = spark.sparkContext
 
-chunk_indices = sc.parallelize(get_chunk_indices(z), 2)
+
+zarr_rdd = zarr_file(sc, input_file)
 
 def pr(x):
     print(x)
 
 # Read the entire array. Each chunk is printed by a separate task.
-chunk_indices.map(read_chunk(input_file)).foreach(pr)
+zarr_rdd.foreach(pr)
 
 # Convert the array to a Spark Vector, then run SVD, and convert the result back to an array.
-vec = chunk_indices.map(read_chunk(input_file)).flatMap(ndarray_to_vector)
+vec = zarr_rdd.flatMap(ndarray_to_vector)
 mat = RowMatrix(vec)
 svd = mat.computeSVD(2, True)
 u = svd.U # U has original number of rows (3) and projected number of cols (2)
@@ -56,7 +57,8 @@ u = svd.U # U has original number of rows (3) and projected number of cols (2)
 z = zarr.open(output_file, mode='w', shape=(u.numRows(), u.numCols()),
               chunks=(2, 2), dtype='f8', compressor=None)
 # Write the entire array. Each chunk is written by a separate task.
-u.rows.mapPartitionsWithIndex(vectors_to_ndarray).foreach(write_chunk(output_file))
+new_zarr_rdd = u.rows.mapPartitionsWithIndex(vectors_to_ndarray)
+save_as_zarr_file(new_zarr_rdd, output_file)
 
 # Read back locally
 z = zarr.open(output_file, mode='r')
