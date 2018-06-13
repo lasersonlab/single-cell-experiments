@@ -140,7 +140,7 @@ def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
     #
     elif isinstance(data, AnnDataRdd):
         adata = data.copy() if copy else data
-        filter_cells_partial = partial(filter_cells_spark, min_counts=min_counts, min_genes=min_genes, max_counts=max_counts, max_genes=max_genes)
+        filter_cells_partial = partial(_filter_cells_spark, min_counts=min_counts, min_genes=min_genes, max_counts=max_counts, max_genes=max_genes)
         result_rdd = adata.rdd.map(filter_cells_partial) # distributed computation
         result_rdd.cache()
         result = result_rdd.map(lambda t: (t[0], t[1])).collect() # retrieve per-partition cell_subset and numbers
@@ -177,7 +177,7 @@ def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
                  if max_counts is None else str(max_counts) + ' counts')
     return cell_subset, number_per_cell
 
-def filter_cells_spark(data, min_counts=None, min_genes=None, max_counts=None,
+def _filter_cells_spark(data, min_counts=None, min_genes=None, max_counts=None,
                  max_genes=None, copy=False):
     # differs from non-Spark version in that it returns the subsetted version of X too
     X = data  # proceed with processing the data matrix
