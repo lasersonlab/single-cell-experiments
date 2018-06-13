@@ -202,3 +202,119 @@ def _filter_cells_spark(data, min_counts=None, min_genes=None, max_counts=None,
               str(max_genes) + ' genes expressed'
               if max_counts is None else str(max_counts) + ' counts')
     return cell_subset, number_per_cell, X[cell_subset, :]
+
+
+def filter_genes(data, min_counts=None, min_cells=None, max_counts=None,
+                 max_cells=None, copy=False):
+    """Filter genes based on number of cells or counts.
+
+    Keep genes that have at least `min_counts` counts or are expressed in at
+    least `min_cells` cells or have at most `max_counts` counts or are expressed
+    in at most `max_cells` cells.
+
+    Only provide one of the optional parameters `min_counts`, `min_cells`,
+    `max_counts`, `max_cells` per call.
+
+    Parameters
+    ----------
+    data : :class:`~scanpy.api.AnnData`, `np.ndarray`, `sp.spmatrix`
+        The (annotated) data matrix of shape `n_obs` × `n_vars`. Rows correspond
+        to cells and columns to genes.
+    min_counts : `int`, optional (default: `None`)
+        Minimum number of counts required for a cell to pass filtering.
+    min_cells : `int`, optional (default: `None`)
+        Minimum number of cells expressed required for a cell to pass filtering.
+    max_counts : `int`, optional (default: `None`)
+        Maximum number of counts required for a cell to pass filtering.
+    max_cells : `int`, optional (default: `None`)
+        Maximum number of cells expressed required for a cell to pass filtering.
+    copy : `bool`, optional (default: `False`)
+        If an :class:`~scanpy.api.AnnData` is passed, determines whether a copy
+        is returned.
+
+    Returns
+    -------
+    If `data` is an :class:`~scanpy.api.AnnData`, filters the object and adds\
+    either `n_cells` or `n_counts` to `adata.var`. Otherwise a tuple
+
+    gene_subset : `np.ndarray`
+        Boolean index mask that does filtering. `True` means that the gene is
+        kept. `False` means the gene is removed.
+    number_per_cell : `np.ndarray`
+        Either `n_counts` or `n_cells` per cell.
+    """
+    n_given_options = sum(
+        option is not None for option in
+        [min_cells, min_counts, max_cells, max_counts])
+    if n_given_options != 1:
+        raise ValueError(
+            'Only provide one of the optional parameters `min_counts`,'
+            '`min_cells`, `max_counts`, `max_cells` per call.')
+
+    if isinstance(data, AnnData):
+        adata = data.copy() if copy else data
+        gene_subset, number = filter_genes(adata.X, min_cells=min_cells,
+                                           min_counts=min_counts, max_cells=max_cells,
+                                           max_counts=max_counts)
+        if min_cells is None and max_cells is None:
+            adata.var['n_counts'] = number
+        else:
+            adata.var['n_cells'] = number
+        adata._inplace_subset_var(gene_subset)
+        return adata if copy else None
+    #
+    # special case for Spark
+    #
+    elif isinstance(data, AnnDataRdd):
+        adata = data.copy() if copy else data
+        filter_genes_partial = partial(filter_genes, min_counts=min_counts, min_cells=min_cells, max_counts=max_counts, max_cells=max_cells)
+        # First pass - count numbers
+        result_rdd = adata.rdd.map(filter_genes_partial) # distributed computation
+        result = result_rdd.collect() # retrieve per-partition numbers (ignore gene_subset and calculate on the driver)
+        number = np.sum([res[1] for res in result], axis=0)
+        min_number = min_counts if min_cells is None else min_cells
+        max_number = max_counts if max_cells is None else max_cells
+        if min_number is not None:
+            gene_subset = number >= min_number
+        if max_number is not None:
+            gene_subset = number <= max_number
+        if min_cells is None and max_cells is None:
+            adata.adata.var['n_counts'] = number
+        else:
+            adata.adata.var['n_cells'] = number
+        adata.adata._inplace_subset_var(gene_subset)
+        # Second pass - filter columns by gene_subset
+        adata.rdd = adata.rdd.map(_apply_gene_subset(gene_subset)) # compute filtered RDD
+        return adata if copy else None
+    #
+    # end special case for Spark
+    #
+    X = data  # proceed with processing the data matrix
+    min_number = min_counts if min_cells is None else min_cells
+    max_number = max_counts if max_cells is None else max_cells
+    number_per_gene = np.sum(X if min_cells is None and max_cells is None
+                             else X > 0, axis=0)
+    if issparse(X):
+        number_per_gene = number_per_gene.A1
+    if min_number is not None:
+        gene_subset = number_per_gene >= min_number
+    if max_number is not None:
+        gene_subset = number_per_gene <= max_number
+
+    s = np.sum(~gene_subset)
+    print('filtered out {} genes that are detected'.format(s))
+    if min_cells is not None or min_counts is not None:
+        print('in less than',
+                 str(min_cells) + ' cells'
+                 if min_counts is None else str(min_counts) + ' counts')
+    if max_cells is not None or max_counts is not None:
+        print('in more than ',
+                 str(max_cells) + ' cells'
+                 if max_counts is None else str(max_counts) + ' counts')
+    return gene_subset, number_per_gene
+
+def _apply_gene_subset(gene_subset):
+    def subset(data):
+        X = data
+        return X[:, gene_subset]
+    return subset

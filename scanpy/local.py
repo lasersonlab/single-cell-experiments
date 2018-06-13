@@ -37,3 +37,9 @@ adata_rdd.rdd.foreach(pr)
 filter_cells(adata_rdd, min_genes=3)
 adata_rdd.rdd.foreach(pr)
 
+# filter genes
+adata_rdd = AnnDataRdd.from_csv(sc, input_file, (2, 5))
+adata_rdd.rdd.foreach(pr)
+filter_genes(adata_rdd, min_cells=2)
+adata_rdd.rdd.foreach(pr)
+
