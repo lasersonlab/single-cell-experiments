@@ -29,5 +29,11 @@ adata_rdd.rdd.foreach(pr)
 
 # Call log1p function which emulates scanpy
 log1p(adata_rdd) # updates in place
-
 adata_rdd.rdd.foreach(pr)
+
+# filter cells
+adata_rdd = AnnDataRdd.from_csv(sc, input_file, (2, 5))
+adata_rdd.rdd.foreach(pr)
+filter_cells(adata_rdd, min_genes=3)
+adata_rdd.rdd.foreach(pr)
+
