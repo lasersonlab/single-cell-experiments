@@ -148,7 +148,7 @@ def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
         number = np.concatenate([res[1] for res in result])
         if min_genes is None and max_genes is None: adata.adata.obs['n_counts'] = number
         else: adata.adata.obs['n_genes'] = number
-        adata.adata._inplace_subset_obs(cell_subset)
+        adata.adata._inplace_subset_obs(cell_subset) # TODO: change so that underlying data matrix X is not updated (won't scale)
         adata.rdd = result_rdd.map(lambda t: t[2]) # compute filtered RDD
         return adata if copy else None
     #
@@ -282,7 +282,7 @@ def filter_genes(data, min_counts=None, min_cells=None, max_counts=None,
             adata.adata.var['n_counts'] = number
         else:
             adata.adata.var['n_cells'] = number
-        adata.adata._inplace_subset_var(gene_subset)
+        adata.adata._inplace_subset_var(gene_subset) # TODO: change so that underlying data matrix X is not updated (won't scale)
         # Second pass - filter columns by gene_subset
         adata.rdd = adata.rdd.map(_apply_gene_subset(gene_subset)) # compute filtered RDD
         return adata if copy else None
