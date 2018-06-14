@@ -318,3 +318,130 @@ def _apply_gene_subset(gene_subset):
         X = data
         return X[:, gene_subset]
     return subset
+
+def scale(data, zero_center=True, max_value=None, copy=False):
+    """Scale data to unit variance and zero mean.
+
+    Parameters
+    ----------
+    data : :class:`~scanpy.api.AnnData`, `np.ndarray`, `sp.sparse`
+        The (annotated) data matrix of shape `n_obs` × `n_vars`. Rows correspond
+        to cells and columns to genes.
+    zero_center : `bool`, optional (default: `True`)
+        If `False`, omit zero-centering variables, which allows to handle sparse
+        input efficiently.
+    max_value : `float` or `None`, optional (default: `None`)
+        Clip (truncate) to this value after scaling. If `None`, do not clip.
+    copy : `bool`, optional (default: `False`)
+        If an :class:`~scanpy.api.AnnData` is passed, determines whether a copy
+        is returned.
+
+    Returns
+    -------
+    Depending on `copy` returns or updates `adata` with a scaled `adata.X`.
+    """
+    if isinstance(data, AnnData):
+        adata = data.copy() if copy else data
+        # need to add the following here to make inplace logic work
+        if zero_center and issparse(adata.X):
+            print(
+                '... scale_data: as `zero_center=True`, sparse input is '
+                'densified and may lead to large memory consumption')
+            adata.X = adata.X.toarray()
+        scale(adata.X, zero_center=zero_center, max_value=max_value, copy=False)
+        return adata if copy else None
+    #
+    # special case for Spark
+    #
+    elif isinstance(data, AnnDataRdd):
+        adata = data.copy() if copy else data
+        adata.rdd = _scale_spark(adata.rdd, zero_center=zero_center) # TODO: support max_value
+        return adata if copy else None
+    #
+    # end special case for Spark
+    #
+    X = data.copy() if copy else data  # proceed with the data matrix
+    zero_center = zero_center if zero_center is not None else False if issparse(X) else True
+    if not zero_center and max_value is not None:
+        print(
+            '... scale_data: be careful when using `max_value` without `zero_center`')
+    if max_value is not None:
+        print('... clipping at max_value', max_value)
+    if zero_center and issparse(X):
+        print('... scale_data: as `zero_center=True`, sparse input is '
+                 'densified and may lead to large memory consumption, returning copy')
+        X = X.toarray()
+        copy = True
+    _scale(X, zero_center)
+    if max_value is not None: X[X > max_value] = max_value
+    return X if copy else None
+
+def _get_mean_var(X):
+    # - using sklearn.StandardScaler throws an error related to
+    #   int to long trafo for very large matrices
+    # - using X.multiply is slower
+    if True:
+        mean = X.mean(axis=0)
+        if issparse(X):
+            mean_sq = X.multiply(X).mean(axis=0)
+            mean = mean.A1
+            mean_sq = mean_sq.A1
+        else:
+            mean_sq = np.multiply(X, X).mean(axis=0)
+        # enforece R convention (unbiased estimator) for variance
+        var = (mean_sq - mean**2) * (X.shape[0]/(X.shape[0]-1))
+    else:
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler(with_mean=False).partial_fit(X)
+        mean = scaler.mean_
+        # enforce R convention (unbiased estimator)
+        var = scaler.var_ * (X.shape[0]/(X.shape[0]-1))
+    return mean, var
+
+def _get_mean_var_spark(rddX):
+    result = rddX.map(_get_count_and_sums).collect()
+    total_count = sum([res[0] for res in result])
+    mean = np.sum([res[1] for res in result], axis=0) / total_count
+    mean_sq = np.sum([res[2] for res in result], axis=0) / total_count
+    var = (mean_sq - mean**2) * (total_count/(total_count-1))
+    return mean, var
+
+def _get_count_and_sums(X):
+    # calculate count, sum, sum squared for columns in each chunk
+    count = X.shape[0]
+    sum = np.sum(X, axis=0)
+    sum_sq = np.multiply(X, X).sum(axis=0)
+    return count, sum, sum_sq
+
+def _scale(X, zero_center=True):
+    # - using sklearn.StandardScaler throws an error related to
+    #   int to long trafo for very large matrices
+    # - using X.multiply is slower
+    #   the result differs very slightly, why?
+    if True:
+        mean, var = _get_mean_var(X)
+        scale = np.sqrt(var)
+        if issparse(X):
+            if zero_center: raise ValueError('Cannot zero-center sparse matrix.')
+            sparsefuncs.inplace_column_scale(X, 1/scale)
+        else:
+            X -= mean
+            X /= scale
+    else:
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler(with_mean=zero_center, copy=False).partial_fit(X)
+        # user R convention (unbiased estimator)
+        scaler.scale_ *= np.sqrt(X.shape[0]/(X.shape[0]-1))
+        scaler.transform(X)
+
+def _scale_spark(rddX, zero_center=True):
+    mean, var = _get_mean_var_spark(rddX)
+    scale = np.sqrt(var)
+    return rddX.map(_scale_map_fn(mean, scale))
+
+def _scale_map_fn(mean, scale):
+    def scale_int(X):
+        X -= mean
+        X /= scale
+        return X
+    return scale_int

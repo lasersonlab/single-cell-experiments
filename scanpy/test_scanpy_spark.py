@@ -48,22 +48,29 @@ class TestScanpySpark(unittest.TestCase):
     def test_log1p(self):
         log1p(self.adata_rdd)
         result = self.get_rdd_as_array()
-        self.assertEquals(result.shape, (3, 5))
+        self.assertEqual(result.shape, (3, 5))
         log1p(self.adata)
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_filter_cells(self):
         filter_cells(self.adata_rdd, min_genes=3)
         result = self.get_rdd_as_array()
-        self.assertEquals(result.shape, (2, 5))
+        self.assertEqual(result.shape, (2, 5))
         filter_cells(self.adata, min_genes=3)
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_filter_genes(self):
         filter_genes(self.adata_rdd, min_cells=2)
         result = self.get_rdd_as_array()
-        self.assertEquals(result.shape, (3, 3))
+        self.assertEqual(result.shape, (3, 3))
         filter_genes(self.adata, min_cells=2)
+        self.assertTrue(np.array_equal(result, self.adata.X))
+
+    def test_scale(self):
+        scale(self.adata_rdd)
+        result = self.get_rdd_as_array()
+        self.assertEqual(result.shape, (3, 5))
+        scale(self.adata)
         self.assertTrue(np.array_equal(result, self.adata.X))
 
 if __name__ == '__main__':
