@@ -2,6 +2,9 @@
 
 import anndata as ad
 import math
+import numpy as np
+
+from anndata.base import BoundRecArr
 
 def get_chunk_indices(shape, chunk_size):
     """
@@ -38,9 +41,25 @@ class AnnDataRdd:
         """
         adata = ad.read_csv(csv_file)
         ci = get_chunk_indices(adata.X.shape, chunk_size)
+        adata.X = None # data is stored in the RDD
         chunk_indices = sc.parallelize(ci, len(ci))
         rdd = chunk_indices.map(read_chunk(csv_file, chunk_size))
         return cls(adata, rdd)
 
     def copy(self):
         return AnnDataRdd(self.adata.copy(), self.rdd)
+
+    def _inplace_subset_var(self, index):
+        # similar to same method in AnnData but for the case when X is None
+        self.adata._n_vars = np.sum(index)
+        self.adata._var = self.adata._var.iloc[index]
+        self.adata._varm = BoundRecArr(self.adata._varm[index], self.adata, 'varm')
+        return None
+
+    def _inplace_subset_obs(self, index):
+        # similar to same method in AnnData but for the case when X is None
+        self.adata._n_obs = np.sum(index)
+        self.adata._slice_uns_sparse_matrices_inplace(self.adata._uns, index)
+        self.adata._obs = self.adata._obs.iloc[index]
+        self.adata._obsm = BoundRecArr(self.adata._obsm[index], self.adata, 'obsm')
+        return None

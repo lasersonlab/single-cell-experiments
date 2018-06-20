@@ -137,7 +137,7 @@ def normalize_per_cell(data, counts_per_cell_after=None, counts_per_cell=None,
             counts_per_cell_after = np.median(counts_per_cell)
         counts_per_cell /= counts_per_cell_after
         adata.adata.obs[key_n_counts] = counts_per_cell
-        adata.adata._inplace_subset_obs(cell_subset)  # TODO: change so that underlying data matrix X is not updated (won't scale)
+        adata._inplace_subset_obs(cell_subset)
         adata.rdd = result_rdd.map(lambda t: t[2]) # compute filtered RDD
         # now run another distributed computation to do the normalization
         adata.rdd = adata.rdd.map(partial(_normalize_cells_spark, counts_per_cell_after=counts_per_cell_after))
@@ -264,7 +264,7 @@ def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
         number = np.concatenate([res[1] for res in result])
         if min_genes is None and max_genes is None: adata.adata.obs['n_counts'] = number
         else: adata.adata.obs['n_genes'] = number
-        adata.adata._inplace_subset_obs(cell_subset) # TODO: change so that underlying data matrix X is not updated (won't scale)
+        adata._inplace_subset_obs(cell_subset)
         adata.rdd = result_rdd.map(lambda t: t[2]) # compute filtered RDD
         return adata if copy else None
     #
@@ -398,7 +398,7 @@ def filter_genes(data, min_counts=None, min_cells=None, max_counts=None,
             adata.adata.var['n_counts'] = number
         else:
             adata.adata.var['n_cells'] = number
-        adata.adata._inplace_subset_var(gene_subset) # TODO: change so that underlying data matrix X is not updated (won't scale)
+        adata._inplace_subset_var(gene_subset)
         # Second pass - filter columns by gene_subset
         adata.rdd = adata.rdd.map(_apply_gene_subset(gene_subset)) # compute filtered RDD
         return adata if copy else None
@@ -530,7 +530,7 @@ def filter_genes_dispersion(data,
         adata.adata.var['means'] = result['means']
         adata.adata.var['dispersions'] = result['dispersions']
         adata.adata.var['dispersions_norm'] = result['dispersions_norm']
-        adata.adata._inplace_subset_var(result['gene_subset']) # TODO: change so that underlying data matrix X is not updated (won't scale)
+        adata._inplace_subset_var(result['gene_subset'])
         adata.rdd = adata.rdd.map(_apply_gene_subset(result['gene_subset']))
         return adata if copy else None
     #
