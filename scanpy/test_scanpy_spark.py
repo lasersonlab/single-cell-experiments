@@ -73,5 +73,12 @@ class TestScanpySpark(unittest.TestCase):
         scale(self.adata)
         self.assertTrue(np.array_equal(result, self.adata.X))
 
+    def test_normalize_per_cell(self):
+        normalize_per_cell(self.adata_rdd)
+        result = self.get_rdd_as_array()
+        self.assertEqual(result.shape, (3, 5))
+        normalize_per_cell(self.adata)
+        self.assertTrue(np.array_equal(result, self.adata.X))
+
 if __name__ == '__main__':
     unittest.main()

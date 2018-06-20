@@ -51,6 +51,121 @@ def log1p(data, copy=False, chunked=False, chunk_size=None):
         return X.log1p()
 
 
+def normalize_per_cell(data, counts_per_cell_after=None, counts_per_cell=None,
+                       key_n_counts=None, copy=False):
+    """Normalize total counts per cell.
+
+    Normalize each cell by total counts over all genes, so that every cell has
+    the same total count after normalization.
+
+    Similar functions are used, for example, by Seurat [Satija15]_, Cell Ranger
+    [Zheng17]_ or SPRING [Weinreb17]_.
+
+    Parameters
+    ----------
+    data : :class:`~scanpy.api.AnnData`, `np.ndarray`, `sp.sparse`
+        The (annotated) data matrix of shape `n_obs` × `n_vars`. Rows correspond
+        to cells and columns to genes.
+    counts_per_cell_after : `float` or `None`, optional (default: `None`)
+        If `None`, after normalization, each cell has a total count equal
+        to the median of the *counts_per_cell* before normalization.
+    counts_per_cell : `np.array`, optional (default: `None`)
+        Precomputed counts per cell.
+    key_n_counts : `str`, optional (default: `'n_counts'`)
+        Name of the field in `adata.obs` where the total counts per cell are
+        stored.
+    copy : `bool`, optional (default: `False`)
+        If an :class:`~scanpy.api.AnnData` is passed, determines whether a copy
+        is returned.
+
+    Returns
+    -------
+    Returns or updates `adata` with normalized version of the original
+    `adata.X`, depending on `copy`.
+
+    Examples
+    --------
+    >>> adata = AnnData(
+    >>>     data=np.array([[1, 0], [3, 0], [5, 6]]))
+    >>> print(adata.X.sum(axis=1))
+    [  1.   3.  11.]
+    >>> sc.pp.normalize_per_cell(adata)
+    >>> print(adata.obs)
+    >>> print(adata.X.sum(axis=1))
+       n_counts
+    0       1.0
+    1       3.0
+    2      11.0
+    [ 3.  3.  3.]
+    >>> sc.pp.normalize_per_cell(adata, counts_per_cell_after=1,
+    >>>                          key_n_counts='n_counts2')
+    >>> print(adata.obs)
+    >>> print(adata.X.sum(axis=1))
+       n_counts  n_counts2
+    0       1.0        3.0
+    1       3.0        3.0
+    2      11.0        3.0
+    [ 1.  1.  1.]
+    """
+    if key_n_counts is None: key_n_counts = 'n_counts'
+    if isinstance(data, AnnData):
+        print('normalizing by total count per cell')
+        adata = data.copy() if copy else data
+        cell_subset, counts_per_cell = filter_cells(adata.X, min_counts=1)
+        adata.obs[key_n_counts] = counts_per_cell
+        adata._inplace_subset_obs(cell_subset)
+        normalize_per_cell(adata.X, counts_per_cell_after,
+                           counts_per_cell=counts_per_cell[cell_subset])
+        print('    finished')
+        print('normalized adata.X and added')
+        print('    \'{}\', counts per cell before normalization (adata.obs)'
+                 .format(key_n_counts))
+        return adata if copy else None
+    #
+    # special case for Spark
+    #
+    elif isinstance(data, AnnDataRdd):
+        adata = data.copy() if copy else data
+        filter_cells_partial = partial(_filter_cells_spark, min_counts=1)
+        result_rdd = adata.rdd.map(filter_cells_partial) # distributed computation
+        result_rdd.cache()
+        result = result_rdd.map(lambda t: (t[0], t[1])).collect() # retrieve per-partition cell_subset and numbers
+        cell_subset = np.concatenate([res[0] for res in result])
+        counts_per_cell = np.concatenate([res[1] for res in result])
+        if counts_per_cell_after is None:
+            counts_per_cell_after = np.median(counts_per_cell)
+        counts_per_cell /= counts_per_cell_after
+        adata.adata.obs[key_n_counts] = counts_per_cell
+        adata.adata._inplace_subset_obs(cell_subset)  # TODO: change so that underlying data matrix X is not updated (won't scale)
+        adata.rdd = result_rdd.map(lambda t: t[2]) # compute filtered RDD
+        # now run another distributed computation to do the normalization
+        adata.rdd = adata.rdd.map(partial(_normalize_cells_spark, counts_per_cell_after=counts_per_cell_after))
+        return adata if copy else None
+    #
+    # end special case for Spark
+    #
+    # proceed with data matrix
+    X = data.copy() if copy else data
+    if counts_per_cell is None:
+        if copy == False:
+            raise ValueError('Can only be run with copy=True')
+        cell_subset, counts_per_cell = filter_cells(X, min_counts=1)
+        X = X[cell_subset]
+        counts_per_cell = counts_per_cell[cell_subset]
+    if counts_per_cell_after is None:
+        counts_per_cell_after = np.median(counts_per_cell)
+    counts_per_cell /= counts_per_cell_after
+    if not issparse(X): X /= counts_per_cell[:, np.newaxis]
+    else: sparsefuncs.inplace_row_scale(X, 1/counts_per_cell)
+    return X if copy else None
+
+
+def _normalize_cells_spark(data, counts_per_cell_after):
+    counts_per_cell = np.sum(data, axis=1)
+    counts_per_cell /= counts_per_cell_after
+    data /= counts_per_cell[:, np.newaxis]
+    return data
+
 def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
                  max_genes=None, copy=False):
     """Filter cell outliers based on counts and numbers of genes expressed.
