@@ -1,0 +1,3 @@
+[submodule "anndata"]
+	path = anndata
+	url = git@github.com:theislab/anndata.git
