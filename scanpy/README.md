@@ -14,3 +14,7 @@ zarr for the backing storage. So we need to
 ## Running the code
 
 Have a look at _local.py_ for a simple demo to run locally. Requires Python 3.
+
+## Running tests
+
+See instructions in _test_scanpy_spark.py_.
