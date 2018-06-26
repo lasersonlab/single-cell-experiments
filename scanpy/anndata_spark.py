@@ -3,6 +3,7 @@
 import anndata as ad
 import math
 import numpy as np
+import zarr
 
 from anndata.base import BoundRecArr
 
@@ -14,13 +15,21 @@ def get_chunk_indices(shape, chunk_size):
     return [(i, j) for i in range(int(math.ceil(float(shape[0])/chunk_size[0])))
             for j in range(int(math.ceil(float(shape[1])/chunk_size[1])))]
 
-def read_chunk(csv_file, chunk_size):
+def read_chunk_csv(csv_file, chunk_size):
     """
     Return a function to read a chunk by coordinates from the given file.
     """
     def read_one_chunk(chunk_index):
-        # TODO: load from Zarr so only the relevant chunk is loaded
         adata = ad.read_csv(csv_file)
+        return adata.X[chunk_size[0]*chunk_index[0]:chunk_size[0]*(chunk_index[0]+1),chunk_size[1]*chunk_index[1]:chunk_size[1]*(chunk_index[1]+1)]
+    return read_one_chunk
+
+def read_chunk_zarr(zarr_file, chunk_size):
+    """
+    Return a function to read a chunk by coordinates from the given file.
+    """
+    def read_one_chunk(chunk_index):
+        adata = ad.read_zarr(zarr_file)
         return adata.X[chunk_size[0]*chunk_index[0]:chunk_size[0]*(chunk_index[0]+1),chunk_size[1]*chunk_index[1]:chunk_size[1]*(chunk_index[1]+1)]
     return read_one_chunk
 
@@ -30,7 +39,6 @@ class AnnDataRdd:
         self.adata = adata
         self.rdd = rdd
 
-    # TODO: load from Zarr, not CSV
     @classmethod
     def from_csv(cls, sc, csv_file, chunk_size):
         """
@@ -43,7 +51,17 @@ class AnnDataRdd:
         ci = get_chunk_indices(adata.X.shape, chunk_size)
         adata.X = None # data is stored in the RDD
         chunk_indices = sc.parallelize(ci, len(ci))
-        rdd = chunk_indices.map(read_chunk(csv_file, chunk_size))
+        rdd = chunk_indices.map(read_chunk_csv(csv_file, chunk_size))
+        return cls(adata, rdd)
+
+    @classmethod
+    def from_zarr(cls, sc, zarr_file):
+        adata = ad.read_zarr(zarr_file)
+        chunk_size = zarr.open(zarr_file, mode='r')['X'].chunks
+        ci = get_chunk_indices(adata.X.shape, chunk_size)
+        adata.X = None # data is stored in the RDD
+        chunk_indices = sc.parallelize(ci, len(ci))
+        rdd = chunk_indices.map(read_chunk_zarr(zarr_file, chunk_size))
         return cls(adata, rdd)
 
     def copy(self):
