@@ -43,7 +43,7 @@ chunks = matrix.chunks
 
 shape_t = tuple(reversed(matrix.shape))
 chunks_t = tuple(reversed(chunks))
-z = zarr.open('data/mca.zarr', mode='w', shape=shape_t,
+z = zarr.open('data/mcat.zarr', mode='w', shape=shape_t,
               chunks=chunks_t, dtype=matrix.dtype)
 
 for chunk_index in get_chunk_indices(matrix):
