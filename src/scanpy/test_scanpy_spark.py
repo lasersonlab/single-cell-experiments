@@ -1,6 +1,6 @@
 # python3 -m venv venv3
 # source venv3/bin/activate
-# pip install numpy anndata pyspark
+# pip install numpy pyspark zarr src/anndata
 # python test_scanpy_spark.py
 
 import anndata as ad

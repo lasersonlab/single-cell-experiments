@@ -4,7 +4,7 @@ import numpy as np
 import warnings
 
 from anndata import AnnData
-from .anndata_spark import *
+from anndata_spark import *
 from functools import partial
 from scipy.sparse import issparse
 
