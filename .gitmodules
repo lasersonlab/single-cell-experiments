@@ -1,3 +1,0 @@
-[submodule "anndata"]
-	path = src/anndata
-	url = https://github.com/tomwhite/anndata
