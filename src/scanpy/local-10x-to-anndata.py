@@ -11,4 +11,4 @@ adata = scanpy.api.read_10x_h5('/Downloads/1M_neurons_filtered_gene_bc_matrices_
 # Use this to write to HDF5
 #adata.write('data/10x.h5ad')
 
-adata.write_zarr('data/10x.zarr', chunks=(5000, 27998))
+adata.write_zarr('data/10x.zarr', chunks=(10000, 27998))

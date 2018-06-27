@@ -1,6 +1,7 @@
 # python3 -m venv venv3
 # source venv3/bin/activate
 # pip install numpy anndata pyspark
+# python test_scanpy_spark.py
 
 import anndata as ad
 import logging
@@ -39,8 +40,11 @@ class TestScanpySpark(unittest.TestCase):
         cls.spark.stop()
 
     def setUp(self):
-        self.adata_rdd = AnnDataRdd.from_csv(self.sc, input_file, (2, 5))
         self.adata = ad.read_csv(input_file) # regular anndata
+        input_file_zarr = 'data/anndata.zarr'
+        self.adata.write_zarr(input_file_zarr, chunks=(2, 5)) # write as zarr, so we can read using a RDD
+        self.adata_rdd = AnnDataRdd.from_zarr(self.sc, input_file_zarr)
+
 
     def get_rdd_as_array(self):
         return np.concatenate(self.adata_rdd.rdd.collect())
