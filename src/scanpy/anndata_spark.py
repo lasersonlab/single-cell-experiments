@@ -1,6 +1,6 @@
 # Generalize anndata (http://anndata.readthedocs.io/en/latest/) to support Spark RDDs of numpy arrays
 
-import anndata as ad
+import src.anndata.anndata as ad
 import math
 import numpy as np
 import zarr
