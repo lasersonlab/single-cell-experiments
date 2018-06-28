@@ -138,7 +138,7 @@ class AnnDataRdd:
         self.adata.write_zarr(store, chunks)
         # write X using Spark
         z = zarr.open(store, mode='w')
-        shape = (self.adata._n_obs, self.adata._n_vars)
+        shape = (self.adata.n_obs, self.adata.n_vars)
         z.create_dataset('X', shape=shape, chunks=chunks, dtype=self.dtype)
         # TODO: the following only works if each partition in the RDD has the same number of rows, which will not be true if there has been any row filtering
         # TODO: handle this case by doing a shuffle

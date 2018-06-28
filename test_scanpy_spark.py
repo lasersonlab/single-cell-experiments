@@ -56,6 +56,7 @@ class TestScanpySpark(unittest.TestCase):
         result = self.get_rdd_as_array()
         self.assertEqual(result.shape, (3, 5))
         log1p(self.adata)
+        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_normalize_per_cell(self):
@@ -63,6 +64,7 @@ class TestScanpySpark(unittest.TestCase):
         result = self.get_rdd_as_array()
         self.assertEqual(result.shape, (3, 5))
         normalize_per_cell(self.adata)
+        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_filter_cells(self):
@@ -70,6 +72,7 @@ class TestScanpySpark(unittest.TestCase):
         result = self.get_rdd_as_array()
         self.assertEqual(result.shape, (2, 5))
         filter_cells(self.adata, min_genes=3)
+        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_filter_genes(self):
@@ -77,6 +80,7 @@ class TestScanpySpark(unittest.TestCase):
         result = self.get_rdd_as_array()
         self.assertEqual(result.shape, (3, 3))
         filter_genes(self.adata, min_cells=2)
+        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_scale(self):
@@ -84,6 +88,7 @@ class TestScanpySpark(unittest.TestCase):
         result = self.get_rdd_as_array()
         self.assertEqual(result.shape, (3, 5))
         scale(self.adata)
+        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
         self.assertTrue(np.array_equal(result, self.adata.X))
 
     def test_write_zarr(self):
