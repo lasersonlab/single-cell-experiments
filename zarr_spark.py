@@ -5,7 +5,15 @@ import zarr
 from pyspark.mllib.linalg import Vectors
 
 # Utility functions for reading and writing a Zarr array chunk; these are designed to be run as Spark tasks.
-# Currently it is assumed that all arrays are 2D and that rows are not chunked. Also each task reads/writes a single chunk.
+# Assume that the row lengths are small enough that the entire row fits into a Zarr chunk; in
+# other words, the chunk width is the same as the row width. Also each task reads/writes a single chunk.
+#
+# Possible matrix operations:
+# * Add or remove columns. Adjust chunk width. Easy to handle since row partitioning does not change.
+# * Add or remove rows. Changes row partitioning. Simplest way to handle is to shuffle with the chunk as the key. May
+#   be able to be more sophisticated with a clever Spark coalescer that can read from other partitions.
+# * Matrix multiplication. Multiplying by a matrix on the right preserves partitioning, so only chunk width needs to
+#   change.
 
 def get_chunk_indices(za):
     """
