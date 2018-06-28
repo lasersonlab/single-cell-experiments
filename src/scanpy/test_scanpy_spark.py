@@ -3,16 +3,20 @@
 # pip install numpy pyspark zarr src/anndata
 # python test_scanpy_spark.py
 
-import anndata as ad
+
+import src.anndata.anndata as ad
 import logging
 import numpy as np
 import unittest
 
-from anndata_spark import *
+from src.scanpy.anndata_spark import AnnDataRdd
 from pyspark.sql import SparkSession
-from scanpy_spark import *
+from src.scanpy.scanpy_spark import *
 
-input_file = 'data/adata.csv'
+def data_file(path):
+    return 'src/scanpy/data/%s' % path
+
+input_file = data_file('adata.csv')
 
 class TestScanpySpark(unittest.TestCase):
 
@@ -41,7 +45,7 @@ class TestScanpySpark(unittest.TestCase):
 
     def setUp(self):
         self.adata = ad.read_csv(input_file) # regular anndata
-        input_file_zarr = 'data/anndata.zarr'
+        input_file_zarr = data_file('anndata.zarr')
         self.adata.write_zarr(input_file_zarr, chunks=(2, 5)) # write as zarr, so we can read using a RDD
         self.adata_rdd = AnnDataRdd.from_zarr(self.sc, input_file_zarr)
 
