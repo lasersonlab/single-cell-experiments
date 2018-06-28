@@ -4,7 +4,7 @@ from os.path import getsize
 import s3fs
 import sys
 import zarr
-from src.anndata.anndata import read_h5ad
+from anndata import read_h5ad
 
 from scanpy.api import read_10x_h5
 
