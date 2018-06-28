@@ -78,12 +78,22 @@ class TestScanpySpark(unittest.TestCase):
         self.assertEqual(result.shape, (3, 3))
         filter_genes(self.adata, min_cells=2)
         self.assertTrue(np.array_equal(result, self.adata.X))
+
     def test_scale(self):
         scale(self.adata_rdd)
         result = self.get_rdd_as_array()
         self.assertEqual(result.shape, (3, 5))
         scale(self.adata)
         self.assertTrue(np.array_equal(result, self.adata.X))
+
+    def test_write_zarr(self):
+        log1p(self.adata_rdd)
+        output_file_zarr = tmp_dir()
+        self.adata_rdd.write_zarr(output_file_zarr, chunks=(2, 5))
+        # read back as zarr (without using RDDs) and check it is the same as self.adata.X
+        adata_log1p = ad.read_zarr(output_file_zarr)
+        log1p(self.adata)
+        self.assertTrue(np.array_equal(adata_log1p.X, self.adata.X))
 
 if __name__ == '__main__':
     unittest.main()

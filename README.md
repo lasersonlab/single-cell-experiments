@@ -63,6 +63,12 @@ Run Tests:
 python test_scanpy_spark.py
 ```
 
+or a single test:
+
+```
+python -m unittest test_scanpy_spark.TestScanpySpark.test_log1p
+```
+
 ### Troubleshooting
 
 #### Error:

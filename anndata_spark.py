@@ -34,10 +34,28 @@ def read_chunk_zarr(zarr_file, chunk_size):
     return read_one_chunk
 
 
+def write_chunk_zarr(zarr_file):
+    """
+    Return a function to write a chunk by index to the given file.
+    """
+    def write_one_chunk(index_arr):
+        """
+        Write a partition index and numpy array to a zarr store. The array must be the size of a chunk, and not
+        overlap other chunks.
+        """
+        index, arr = index_arr
+        z = zarr.open(zarr_file, mode='r+')
+        x = z['X']
+        chunk_size = x.chunks
+        x[chunk_size[0]*index:chunk_size[0]*(index+1),:] = arr
+    return write_one_chunk
+
+
 class AnnDataRdd:
-    def __init__(self, adata, rdd):
+    def __init__(self, adata, rdd, dtype):
         self.adata = adata
         self.rdd = rdd
+        self.dtype = dtype # need to store since adata.X is None so can't retrieve dtype from there
 
     @classmethod
     def from_csv(cls, sc, csv_file, chunk_size):
@@ -48,21 +66,38 @@ class AnnDataRdd:
         redundant and won't scale. This should be improved, possibly by changing anndata.
         """
         adata = ad.read_csv(csv_file)
+        dtype = adata.X.dtype
         ci = get_chunk_indices(adata.X.shape, chunk_size)
         adata.X = None # data is stored in the RDD
         chunk_indices = sc.parallelize(ci, len(ci))
         rdd = chunk_indices.map(read_chunk_csv(csv_file, chunk_size))
-        return cls(adata, rdd)
+        return cls(adata, rdd, dtype)
 
     @classmethod
     def from_zarr(cls, sc, zarr_file):
         adata = ad.read_zarr(zarr_file)
+        dtype = adata.X.dtype
         chunk_size = zarr.open(zarr_file, mode='r')['X'].chunks
         ci = get_chunk_indices(adata.X.shape, chunk_size)
         adata.X = None # data is stored in the RDD
         chunk_indices = sc.parallelize(ci, len(ci))
         rdd = chunk_indices.map(read_chunk_zarr(zarr_file, chunk_size))
-        return cls(adata, rdd)
+        return cls(adata, rdd, dtype)
+
+    def write_zarr(self, zarr_file, chunks):
+        # write the metadata out using anndata
+        self.adata.write_zarr(zarr_file, chunks)
+        # write X using Spark
+        z = zarr.open(zarr_file, mode='w')
+        shape = (self.adata._n_obs, self.adata._n_vars)
+        z.create_dataset('X', shape=shape, chunks=chunks, dtype=self.dtype)
+        # TODO: the following only works if each partition in the RDD has the same number of rows, which will not be true if there has been any row filtering
+        # TODO: handle this case by doing a shuffle
+        def index_partitions(index, iterator):
+            values = list(iterator)
+            assert len(values) == 1 # 1 numpy array per partition
+            return [(index, values[0])]
+        self.rdd.mapPartitionsWithIndex(index_partitions).foreach(write_chunk_zarr(zarr_file))
 
     def copy(self):
         return AnnDataRdd(self.adata.copy(), self.rdd)
