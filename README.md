@@ -8,7 +8,7 @@ The work in this repository is exploratory and not suitable for production.
 
 ## Overview
 
-### [`src/anndata`](src/anndata)
+### [`anndata`](anndata)
 - a git submodule for [tomwhite/anndata](https://github.com/tomwhite/anndata)
 - WIP support for [AnnData] backed by [Zarr]
 
@@ -46,7 +46,7 @@ Create and activate a Python 3 virtualenv, and install the requirements:
 python3 -m venv venv  # python 3 is required!
 . venv/bin/activate
 pip install -r requirements.txt
-pip install src/anndata
+pip install ./anndata # install zarr branch of anndata
 ```
 
 Install and configure Spark 2.3.1:
