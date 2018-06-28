@@ -8,7 +8,6 @@
 
 import shutil
 
-from anndata_spark import *
 from scanpy_spark import *
 
 input_file = '/tmp/adata.csv'

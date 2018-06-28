@@ -1,17 +1,11 @@
-# python3 -m venv venv3
-# source venv3/bin/activate
-# pip install numpy pyspark zarr src/anndata
-# python test_scanpy_spark.py
-
-
-import src.anndata.anndata as ad
+import anndata as ad
 import logging
 import numpy as np
 import unittest
 
-from src.scanpy.anndata_spark import AnnDataRdd
+from anndata_spark import AnnDataRdd
 from pyspark.sql import SparkSession
-from src.scanpy.scanpy_spark import *
+from scanpy_spark import *
 
 def data_file(path):
     return 'src/scanpy/data/%s' % path

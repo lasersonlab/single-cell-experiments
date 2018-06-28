@@ -4,11 +4,8 @@
 # export PYSPARK_PYTHON=$(pwd)/venv/bin/python
 # ~/sw/spark-2.2.1-bin-hadoop2.7/bin/pyspark
 
-import math
-import numpy as np
 import zarr
 
-from pyspark.mllib.linalg import Vectors
 from pyspark.mllib.linalg.distributed import RowMatrix
 from pyspark.sql.types import *
 

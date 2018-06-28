@@ -12,9 +12,14 @@ The work in this repository is exploratory and not suitable for production.
 - a git submodule for [tomwhite/anndata](https://github.com/tomwhite/anndata)
 - WIP support for [AnnData] backed by [Zarr]
 
-### [`src/scanpy`](src/scanpy)
-- [`AnnDataRdd`](src/scanpy/anndata_spark.py): [AnnData] implementation backed by a [Spark RDD](https://spark.apache.org/docs/2.3.1/rdd-programming-guide.html#resilient-distributed-datasets-rdds)
-- [`scanpy_spark.py`](src/scanpy/scanpy_spark.py): some [ScanPy] function implemented for `AnnDataRdd`s
+### [`anndata_spark.py`](anndata_spark.py)
+Provides `AnnDataRdd`, an [AnnData] implementation backed by a [Spark RDD](https://spark.apache.org/docs/2.3.1/rdd-programming-guide.html#resilient-distributed-datasets-rdds)
+
+### [`scanpy_spark.py`](scanpy_spark.py)
+Some [ScanPy] functions implemented for `AnnDataRdd`s
+
+### [`zarr_spark.py`](zarr_spark.py)
+Spark convenience functions for reading and writing Zarr files as RDDs of numpy arrays.
 
 ### [`cli.py`](./cli.py)
 A command-line interface for converting between various HDF5 formats (10X's, [Loom], [AnnData]) and [Zarr] equivalents:
@@ -38,9 +43,10 @@ python cli.py files/ica_cord_blood.h5ad files/ica_cord_blood.h5ad.zarr
 Create and activate a Python 3 virtualenv, and install the requirements:
 
 ```
-python3 -m virtualenv venv  # python 3 is required!
+python3 -m venv venv  # python 3 is required!
 . venv/bin/activate
 pip install -r requirements.txt
+pip install src/anndata
 ```
 
 Install and configure Spark 2.3.1:
@@ -54,7 +60,7 @@ export SPARK_HOME=spark-2.3.1-bin-hadoop2.7
 Run Tests:
 
 ```
-python src/scanpy/test_scanpy_spark.py
+python test_scanpy_spark.py
 ```
 
 ### Troubleshooting
