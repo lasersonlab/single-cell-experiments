@@ -3,7 +3,7 @@
 import numpy as np
 import warnings
 
-from anndata import AnnData
+from src.anndata.anndata import AnnData
 from anndata_spark import AnnDataRdd
 from functools import partial
 from scipy.sparse import issparse

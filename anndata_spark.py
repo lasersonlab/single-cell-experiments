@@ -1,11 +1,11 @@
 # Generalize anndata (http://anndata.readthedocs.io/en/latest/) to support Spark RDDs of numpy arrays
 
-import anndata as ad
 import math
 import numpy as np
 import zarr
 
-from anndata.base import BoundRecArr
+import src.anndata.anndata as ad
+from src.anndata.anndata.base import BoundRecArr
 
 def get_chunk_indices(shape, chunk_size):
     """
