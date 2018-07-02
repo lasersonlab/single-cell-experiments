@@ -3,8 +3,10 @@ import logging
 import tempfile
 import unittest
 
+from anndata_spark import repartition_chunks
 from pyspark.sql import SparkSession
 from scanpy_spark import *
+from zarr_spark import repartition_chunks
 
 
 def data_file(path):
@@ -101,6 +103,36 @@ class TestScanpySpark(unittest.TestCase):
         adata_log1p = ad.read_zarr(output_file_zarr)
         log1p(self.adata)
         self.assertTrue(np.array_equal(adata_log1p.X, self.adata.X))
+
+    def test_repartition_chunks(self):
+        uneven_rows = [
+            np.array([[1.], [2.], [3.], [4.]]),
+            np.array([[5.], [6.], [7.]]),
+            np.array([[8.], [9.], [10.], [11.]])
+        ]
+        uneven_rows_rdd = self.sc.parallelize(uneven_rows, len(uneven_rows))
+        even_rows_rdd = repartition_chunks(self.sc, uneven_rows_rdd, (3, 1))
+        even_rows = even_rows_rdd.collect()
+        even_rows_expected = [
+            np.array([[1.], [2.], [3.]]),
+            np.array([[4.], [5.], [6.]]),
+            np.array([[7.], [8.], [9.]]),
+            np.array([[10.], [11.]])
+        ]
+        for i in range(len(even_rows_expected)):
+            self.assertTrue(np.array_equal(even_rows[i], even_rows_expected[i]))
+
+    def test_repartition_chunks_no_op(self):
+        rows = [
+            np.array([[1.], [2.], [3.]]),
+            np.array([[4.], [5.], [6.]]),
+            np.array([[7.], [8.]])
+        ]
+        rows_rdd = self.sc.parallelize(rows, len(rows))
+        new_rows_rdd = repartition_chunks(self.sc, rows_rdd, (3, 1))
+        new_rows = new_rows_rdd.collect()
+        for i in range(len(rows)):
+            self.assertTrue(np.array_equal(new_rows[i], rows[i]))
 
 
 if __name__ == '__main__':

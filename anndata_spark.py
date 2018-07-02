@@ -6,17 +6,7 @@ import zarr
 
 import anndata as ad
 from anndata.base import BoundRecArr
-
-def get_chunk_indices(shape, chunk_size):
-    """
-    Return all the indices (coordinates) for the chunks in a zarr array, even empty ones.
-    Note that unlike Zarr the chunk size must be explicitly set.
-    """
-    return [(i, j) for i in range(int(math.ceil(float(shape[0])/chunk_size[0])))
-            for j in range(int(math.ceil(float(shape[1])/chunk_size[1])))]
-
-def read_adata_chunk(adata, chunks, chunk_index):
-    return adata.X[chunks[0]*chunk_index[0]:chunks[0]*(chunk_index[0]+1),chunks[1]*chunk_index[1]:chunks[1]*(chunk_index[1]+1)]
+from zarr_spark import get_chunk_indices, read_zarr_chunk, repartition_chunks
 
 def read_chunk_csv(csv_file, chunk_size):
     """
@@ -24,7 +14,7 @@ def read_chunk_csv(csv_file, chunk_size):
     """
     def read_one_chunk(chunk_index):
         adata = ad.read_csv(csv_file)
-        return read_adata_chunk(adata, chunk_size, chunk_index)
+        return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
 def read_chunk_zarr(zarr_file, chunk_size):
@@ -33,7 +23,7 @@ def read_chunk_zarr(zarr_file, chunk_size):
     """
     def read_one_chunk(chunk_index):
         adata = ad.read_zarr(zarr_file)
-        return read_adata_chunk(adata, chunk_size, chunk_index)
+        return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
 def read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
@@ -45,7 +35,7 @@ def read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
         gcs = gcsfs.GCSFileSystem(gcs_project, token=gcs_token)
         store = gcsfs.mapping.GCSMap(gcs_path, gcs=gcs)
         adata = ad.read_zarr(store)
-        return read_adata_chunk(adata, chunk_size, chunk_index)
+        return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
 def write_chunk_zarr(zarr_file):
@@ -85,7 +75,8 @@ def write_chunk_zarr_gcs(gcs_path, gcs_project, gcs_token):
 
 
 class AnnDataRdd:
-    def __init__(self, adata, rdd, dtype):
+    def __init__(self, sc, adata, rdd, dtype):
+        self.sc = sc
         self.adata = adata
         self.rdd = rdd
         self.dtype = dtype # need to store since adata.X is None so can't retrieve dtype from there
@@ -97,7 +88,7 @@ class AnnDataRdd:
         adata.X = None # data is stored in the RDD
         chunk_indices = sc.parallelize(ci, len(ci))
         rdd = chunk_indices.map(read_chunk_fn)
-        return cls(adata, rdd, dtype)
+        return cls(sc, adata, rdd, dtype)
 
     @classmethod
     def from_csv(cls, sc, csv_file, chunk_size):
@@ -134,19 +125,19 @@ class AnnDataRdd:
         return cls._from_anndata(sc, adata, chunk_size, read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token))
 
     def _write_zarr(self, store, chunks, write_chunk_fn):
+        assert chunks[1] == self.adata.n_vars
         # write the metadata out using anndata
         self.adata.write_zarr(store, chunks)
         # write X using Spark
+        partitioned_rdd = repartition_chunks(self.sc, self.rdd, chunks) # repartition if needed
         z = zarr.open(store, mode='w')
         shape = (self.adata.n_obs, self.adata.n_vars)
         z.create_dataset('X', shape=shape, chunks=chunks, dtype=self.dtype)
-        # TODO: the following only works if each partition in the RDD has the same number of rows, which will not be true if there has been any row filtering
-        # TODO: handle this case by doing a shuffle
         def index_partitions(index, iterator):
             values = list(iterator)
             assert len(values) == 1 # 1 numpy array per partition
             return [(index, values[0])]
-        self.rdd.mapPartitionsWithIndex(index_partitions).foreach(write_chunk_fn)
+        partitioned_rdd.mapPartitionsWithIndex(index_partitions).foreach(write_chunk_fn)
 
     def write_zarr(self, zarr_file, chunks):
         """
@@ -174,6 +165,8 @@ class AnnDataRdd:
         return None
 
     def _inplace_subset_obs(self, index):
+        # TODO: keep track of per-partition row counts in the AnnDataRdd object to avoid having to compute them in repartition_chunks
+        # TODO: in this function we can update per-partition row counts by looking at index
         # similar to same method in AnnData but for the case when X is None
         self.adata._n_obs = np.sum(index)
         self.adata._slice_uns_sparse_matrices_inplace(self.adata._uns, index)
