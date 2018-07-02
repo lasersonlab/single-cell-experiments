@@ -6,17 +6,7 @@ import numpy as np
 import zarr
 
 from anndata.base import BoundRecArr
-
-def get_chunk_indices(shape, chunk_size):
-    """
-    Return all the indices (coordinates) for the chunks in a zarr array, even empty ones.
-    Note that unlike Zarr the chunk size must be explicitly set.
-    """
-    return [(i, j) for i in range(int(math.ceil(float(shape[0])/chunk_size[0])))
-            for j in range(int(math.ceil(float(shape[1])/chunk_size[1])))]
-
-def read_adata_chunk(adata, chunks, chunk_index):
-    return adata.X[chunks[0]*chunk_index[0]:chunks[0]*(chunk_index[0]+1),chunks[1]*chunk_index[1]:chunks[1]*(chunk_index[1]+1)]
+from zarr_spark import get_chunk_indices, read_zarr_chunk
 
 def read_chunk_csv(csv_file, chunk_size):
     """
@@ -24,7 +14,7 @@ def read_chunk_csv(csv_file, chunk_size):
     """
     def read_one_chunk(chunk_index):
         adata = ad.read_csv(csv_file)
-        return read_adata_chunk(adata, chunk_size, chunk_index)
+        return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
 def read_chunk_zarr(zarr_file, chunk_size):
@@ -33,7 +23,7 @@ def read_chunk_zarr(zarr_file, chunk_size):
     """
     def read_one_chunk(chunk_index):
         adata = ad.read_zarr(zarr_file)
-        return read_adata_chunk(adata, chunk_size, chunk_index)
+        return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
 def read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
@@ -45,7 +35,7 @@ def read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
         gcs = gcsfs.GCSFileSystem(gcs_project, token=gcs_token)
         store = gcsfs.mapping.GCSMap(gcs_path, gcs=gcs)
         adata = ad.read_zarr(store)
-        return read_adata_chunk(adata, chunk_size, chunk_index)
+        return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
 def write_chunk_zarr(zarr_file):
