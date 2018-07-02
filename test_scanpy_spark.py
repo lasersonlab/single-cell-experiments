@@ -1,20 +1,22 @@
 import src.anndata.anndata as ad
 import logging
-import numpy as np
 import tempfile
 import unittest
 
-from anndata_spark import AnnDataRdd
 from pyspark.sql import SparkSession
 from scanpy_spark import *
+
 
 def data_file(path):
     return 'data/%s' % path
 
+
 def tmp_dir():
     return tempfile.TemporaryDirectory('.zarr').name
 
+
 input_file = data_file('adata.csv')
+
 
 class TestScanpySpark(unittest.TestCase):
 
@@ -99,6 +101,7 @@ class TestScanpySpark(unittest.TestCase):
         adata_log1p = ad.read_zarr(output_file_zarr)
         log1p(self.adata)
         self.assertTrue(np.array_equal(adata_log1p.X, self.adata.X))
+
 
 if __name__ == '__main__':
     unittest.main()
