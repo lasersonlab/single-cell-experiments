@@ -4,6 +4,8 @@ jobs:
     working_directory: ~/single-cell-experiments
     docker:
       - image: hancheng/circleci-python3.6-java8:browsers
+    environment:
+      PYTHONPATH: anndata
     steps:
       - checkout
       - run: git submodule sync

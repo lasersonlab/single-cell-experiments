@@ -1,4 +1,4 @@
-import src.anndata.anndata as ad
+import anndata as ad
 import logging
 import tempfile
 import unittest

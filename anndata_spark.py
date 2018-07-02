@@ -4,8 +4,8 @@ import math
 import numpy as np
 import zarr
 
-import src.anndata.anndata as ad
-from src.anndata.anndata.base import BoundRecArr
+import anndata as ad
+from anndata.base import BoundRecArr
 
 def get_chunk_indices(shape, chunk_size):
     """
