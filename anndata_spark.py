@@ -1,10 +1,10 @@
 # Generalize anndata (http://anndata.readthedocs.io/en/latest/) to support Spark RDDs of numpy arrays
 
-import anndata as ad
 import math
 import numpy as np
 import zarr
 
+import anndata as ad
 from anndata.base import BoundRecArr
 from zarr_spark import get_chunk_indices, read_zarr_chunk, repartition_chunks
 

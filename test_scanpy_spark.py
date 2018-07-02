@@ -1,21 +1,24 @@
 import anndata as ad
 import logging
-import numpy as np
 import tempfile
 import unittest
 
-from anndata_spark import AnnDataRdd, repartition_chunks
+from anndata_spark import repartition_chunks
 from pyspark.sql import SparkSession
 from scanpy_spark import *
 from zarr_spark import repartition_chunks
 
+
 def data_file(path):
     return 'data/%s' % path
+
 
 def tmp_dir():
     return tempfile.TemporaryDirectory('.zarr').name
 
+
 input_file = data_file('adata.csv')
+
 
 class TestScanpySpark(unittest.TestCase):
 
@@ -130,6 +133,7 @@ class TestScanpySpark(unittest.TestCase):
         new_rows = new_rows_rdd.collect()
         for i in range(len(rows)):
             self.assertTrue(np.array_equal(new_rows[i], rows[i]))
+
 
 if __name__ == '__main__':
     unittest.main()
