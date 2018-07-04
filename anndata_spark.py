@@ -75,20 +75,26 @@ def write_chunk_zarr_gcs(gcs_path, gcs_project, gcs_token):
 
 
 class AnnDataRdd:
-    def __init__(self, sc, adata, rdd, dtype):
+    def __init__(self, sc, adata, rdd, shape, chunks, dtype):
         self.sc = sc
         self.adata = adata
         self.rdd = rdd
-        self.dtype = dtype # need to store since adata.X is None so can't retrieve dtype from there
+        # need to store some metadata about X since adata.X is None so can't retrieve from there
+        self.shape = shape
+        self.chunks = chunks
+        self.dtype = dtype
+        # maintain per-partition row counts so we don't have to recompute for repartition_chunks() before saving
+        self.partition_row_counts = [chunks[0]] * (shape[0] // chunks[0]) + [shape[0] % chunks[0]]
 
     @classmethod
     def _from_anndata(cls, sc, adata, chunk_size, read_chunk_fn):
+        shape = adata.X.shape
         dtype = adata.X.dtype
-        ci = get_chunk_indices(adata.X.shape, chunk_size)
+        ci = get_chunk_indices(shape, chunk_size)
         adata.X = None # data is stored in the RDD
         chunk_indices = sc.parallelize(ci, len(ci))
         rdd = chunk_indices.map(read_chunk_fn)
-        return cls(sc, adata, rdd, dtype)
+        return cls(sc, adata, rdd, shape, chunk_size, dtype)
 
     @classmethod
     def from_csv(cls, sc, csv_file, chunk_size):
@@ -129,7 +135,7 @@ class AnnDataRdd:
         # write the metadata out using anndata
         self.adata.write_zarr(store, chunks)
         # write X using Spark
-        partitioned_rdd = repartition_chunks(self.sc, self.rdd, chunks) # repartition if needed
+        partitioned_rdd = repartition_chunks(self.sc, self.rdd, chunks, self.partition_row_counts) # repartition if needed
         z = zarr.open(store, mode='w')
         shape = (self.adata.n_obs, self.adata.n_vars)
         z.create_dataset('X', shape=shape, chunks=chunks, dtype=self.dtype)
@@ -164,12 +170,11 @@ class AnnDataRdd:
         self.adata._varm = BoundRecArr(self.adata._varm[index], self.adata, 'varm')
         return None
 
-    def _inplace_subset_obs(self, index):
-        # TODO: keep track of per-partition row counts in the AnnDataRdd object to avoid having to compute them in repartition_chunks
-        # TODO: in this function we can update per-partition row counts by looking at index
+    def _inplace_subset_obs(self, index, partition_row_counts):
         # similar to same method in AnnData but for the case when X is None
         self.adata._n_obs = np.sum(index)
         self.adata._slice_uns_sparse_matrices_inplace(self.adata._uns, index)
         self.adata._obs = self.adata._obs.iloc[index]
         self.adata._obsm = BoundRecArr(self.adata._obsm[index], self.adata, 'obsm')
+        self.partition_row_counts = partition_row_counts
         return None

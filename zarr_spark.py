@@ -75,7 +75,7 @@ def save_as_zarr_file(zarr_rdd, file):
     """
     zarr_rdd.foreach(write_chunk(file))
 
-def repartition_chunks(sc, rows_rdd, chunks):
+def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
     """
     Repartition an RDD of numpy arrays with uneven row sizes so that every partition has chunks[0] rows (except for the
     last, which may have fewer).
@@ -83,14 +83,12 @@ def repartition_chunks(sc, rows_rdd, chunks):
     """
     c = chunks[0] # the chunk size for rows
 
-    # cache since we are going to do two computations on this RDD
-    rows_rdd.cache()
-
     # Generate a list of offsets, so that k[i] is the number of rows before the i-th partition
     # Then turn this into a row range for each partition
-    def count_in_partition(iterator):
-        return [list(iterator)[0].shape[0]] # num rows in the matrix
-    partition_row_counts = rows_rdd.mapPartitions(count_in_partition).collect()
+    if partition_row_counts == None:
+        def count_in_partition(iterator):
+            return [list(iterator)[0].shape[0]] # num rows in the matrix
+        partition_row_counts = rows_rdd.mapPartitions(count_in_partition).collect()
     if all([count == c for count in partition_row_counts[:-1]]): # if all except last partition have c rows...
         return rows_rdd # ... then no need to shuffle, since already partitioned correctly
     k = list(accumulate([0] + partition_row_counts))

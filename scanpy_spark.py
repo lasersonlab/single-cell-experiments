@@ -129,15 +129,15 @@ def normalize_per_cell(data, counts_per_cell_after=None, counts_per_cell=None,
         adata = data.copy() if copy else data
         filter_cells_partial = partial(_filter_cells_spark, min_counts=1)
         result_rdd = adata.rdd.map(filter_cells_partial) # distributed computation
-        result_rdd.cache()
         result = result_rdd.map(lambda t: (t[0], t[1])).collect() # retrieve per-partition cell_subset and numbers
         cell_subset = np.concatenate([res[0] for res in result])
         counts_per_cell = np.concatenate([res[1] for res in result])
+        partition_row_counts = [np.sum(res[0]) for res in result]
         if counts_per_cell_after is None:
             counts_per_cell_after = np.median(counts_per_cell)
         counts_per_cell /= counts_per_cell_after
         adata.adata.obs[key_n_counts] = counts_per_cell
-        adata._inplace_subset_obs(cell_subset)
+        adata._inplace_subset_obs(cell_subset, partition_row_counts)
         adata.rdd = result_rdd.map(lambda t: t[2]) # compute filtered RDD
         # now run another distributed computation to do the normalization
         adata.rdd = adata.rdd.map(partial(_normalize_cells_spark, counts_per_cell_after=counts_per_cell_after))
@@ -258,13 +258,13 @@ def filter_cells(data, min_counts=None, min_genes=None, max_counts=None,
         adata = data.copy() if copy else data
         filter_cells_partial = partial(_filter_cells_spark, min_counts=min_counts, min_genes=min_genes, max_counts=max_counts, max_genes=max_genes)
         result_rdd = adata.rdd.map(filter_cells_partial) # distributed computation
-        result_rdd.cache()
         result = result_rdd.map(lambda t: (t[0], t[1])).collect() # retrieve per-partition cell_subset and numbers
         cell_subset = np.concatenate([res[0] for res in result])
         number = np.concatenate([res[1] for res in result])
+        partition_row_counts = [np.sum(res[0]) for res in result]
         if min_genes is None and max_genes is None: adata.adata.obs['n_counts'] = number
         else: adata.adata.obs['n_genes'] = number
-        adata._inplace_subset_obs(cell_subset)
+        adata._inplace_subset_obs(cell_subset, partition_row_counts)
         adata.rdd = result_rdd.map(lambda t: t[2]) # compute filtered RDD
         return adata if copy else None
     #
