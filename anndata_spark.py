@@ -8,7 +8,7 @@ import anndata as ad
 from anndata.base import BoundRecArr
 from zarr_spark import get_chunk_indices, read_zarr_chunk, repartition_chunks
 
-def read_chunk_csv(csv_file, chunk_size):
+def _read_chunk_csv(csv_file, chunk_size):
     """
     Return a function to read a chunk by coordinates from the given file.
     """
@@ -17,7 +17,7 @@ def read_chunk_csv(csv_file, chunk_size):
         return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
-def read_chunk_zarr(zarr_file, chunk_size):
+def _read_chunk_zarr(zarr_file, chunk_size):
     """
     Return a function to read a chunk by coordinates from the given file.
     """
@@ -26,7 +26,7 @@ def read_chunk_zarr(zarr_file, chunk_size):
         return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
-def read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
+def _read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
     """
     Return a function to read a chunk by coordinates from the given file.
     """
@@ -38,7 +38,7 @@ def read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token):
         return read_zarr_chunk(adata.X, chunk_size, chunk_index)
     return read_one_chunk
 
-def write_chunk_zarr(zarr_file):
+def _write_chunk_zarr(zarr_file):
     """
     Return a function to write a chunk by index to the given file.
     """
@@ -54,7 +54,7 @@ def write_chunk_zarr(zarr_file):
         x[chunk_size[0]*index:chunk_size[0]*(index+1),:] = arr
     return write_one_chunk
 
-def write_chunk_zarr_gcs(gcs_path, gcs_project, gcs_token):
+def _write_chunk_zarr_gcs(gcs_path, gcs_project, gcs_token):
     """
     Return a function to write a chunk by index to the given file.
     """
@@ -105,7 +105,7 @@ class AnnDataRdd:
         redundant and won't scale. This should be improved, possibly by changing anndata.
         """
         adata = ad.read_csv(csv_file)
-        return cls._from_anndata(sc, adata, chunk_size, read_chunk_csv(csv_file, chunk_size))
+        return cls._from_anndata(sc, adata, chunk_size, _read_chunk_csv(csv_file, chunk_size))
 
     @classmethod
     def from_zarr(cls, sc, zarr_file):
@@ -115,7 +115,7 @@ class AnnDataRdd:
         """
         adata = ad.read_zarr(zarr_file)
         chunk_size = zarr.open(zarr_file, mode='r')['X'].chunks
-        return cls._from_anndata(sc, adata, chunk_size, read_chunk_zarr(zarr_file, chunk_size))
+        return cls._from_anndata(sc, adata, chunk_size, _read_chunk_zarr(zarr_file, chunk_size))
 
     @classmethod
     def from_zarr_gcs(cls, sc, gcs_path, gcs_project, gcs_token='cloud'):
@@ -128,7 +128,7 @@ class AnnDataRdd:
         store = gcsfs.mapping.GCSMap(gcs_path, gcs=gcs)
         adata = ad.read_zarr(store)
         chunk_size = zarr.open(store, mode='r')['X'].chunks
-        return cls._from_anndata(sc, adata, chunk_size, read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token))
+        return cls._from_anndata(sc, adata, chunk_size, _read_chunk_zarr_gcs(gcs_path, chunk_size, gcs_project, gcs_token))
 
     def _write_zarr(self, store, chunks, write_chunk_fn):
         assert chunks[1] == self.adata.n_vars
@@ -149,7 +149,7 @@ class AnnDataRdd:
         """
         Write an anndata object to a Zarr file.
         """
-        self._write_zarr(zarr_file, chunks, write_chunk_zarr(zarr_file))
+        self._write_zarr(zarr_file, chunks, _write_chunk_zarr(zarr_file))
 
     def write_zarr_gcs(self, gcs_path, chunks, gcs_project, gcs_token='cloud'):
         """
@@ -158,7 +158,7 @@ class AnnDataRdd:
         import gcsfs.mapping
         gcs = gcsfs.GCSFileSystem(gcs_project, token=gcs_token)
         store = gcsfs.mapping.GCSMap(gcs_path, gcs=gcs)
-        self._write_zarr(store, chunks, write_chunk_zarr_gcs(gcs_path, gcs_project, gcs_token))
+        self._write_zarr(store, chunks, _write_chunk_zarr_gcs(gcs_path, gcs_project, gcs_token))
 
     def copy(self):
         return AnnDataRdd(self.adata.copy(), self.rdd)
