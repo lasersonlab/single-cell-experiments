@@ -4,3 +4,6 @@
 [submodule "scanpy"]
 	path = scanpy
 	url = https://github.com/tomwhite/scanpy
+[submodule "zarr"]
+	path = zarr
+	url = git@github.com:lasersonlab/zarr.git
