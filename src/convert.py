@@ -54,7 +54,7 @@ def build_chunks_map(o, chunk_size, axis = 0):
         size_per_main_axis_entry = elems_per_main_axis_entry * o.dtype.itemsize
         main_axis_entries_per_chunk = chunk_size // size_per_main_axis_entry
         chunks = list(shape)
-        chunks[axis] = main_axis_entries_per_chunk
+        chunks[axis] = min(chunks[axis], main_axis_entries_per_chunk)
         return tuple(chunks)
     else:
         raise Exception('Unrecognized HDF5 object: %s' % f)
