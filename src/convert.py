@@ -3,23 +3,44 @@ from gcsfs.mapping import GCSMap
 from h5py import Dataset, File, Group
 from s3fs import S3FileSystem
 from s3fs.mapping import S3Map
+import json
 import os
 import sys
 import zarr
 
 from scanpy.api import read_10x_h5, read_loom
 
+from os import path
 from os.path import splitext
 
 import re
 from urllib.parse import urlparse
 
 
+def gcpProject():
+    file = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+    if not file:
+        raise Exception('Set $GOOGLE_APPLICATION_CREDENTIALS env var')
+    if path.exists(file):
+        with open(file) as fd:
+            return json.load(fd)['project_id']
+    else:
+        raise Exception("GOOGLE_APPLICATION_CREDENTIALS file doesn't exist: %s" % file)
+
+
+_gcsFileSystem = None
+def gcsFileSystem():
+    global _gcsFileSystem
+    if not _gcsFileSystem:
+        project = gcpProject()
+        _gcsFileSystem = GCSFileSystem(project=project)
+    return _gcsFileSystem
+
+
 def exists(uri):
     p = urlparse(uri)
     if p.scheme == 'gs':
-        fs = GCSFileSystem()
-        fs.exists(uri)
+        gcsFileSystem().exists(uri)
     elif p.scheme == 's3':
         fs = S3FileSystem()
         fs.exists(uri)
@@ -32,8 +53,7 @@ def exists(uri):
 def make_store(path):
     m = re.match('^gc?s://', path)
     if m:
-        gcs = GCSFileSystem()
-        return GCSMap(path[len(m.group(0)):], gcs=gcs)
+        return GCSMap(path[len(m.group(0)):], gcs=gcsFileSystem())
 
     if path.startswith('s3://'):
         s3 = S3FileSystem()
@@ -106,7 +126,7 @@ def convert(
     elif output_ext == '.h5ad':
         if input_ext == '.h5':
             if not genome:
-                keys = list(File(input).keys())
+                keys = list(File(input, 'r').keys())
                 if len(keys) == 1:
                     genome = keys[0]
                 else:
