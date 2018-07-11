@@ -18,6 +18,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
+            echo "PYTHONPATH: $PYTHONPATH"
             pip install -r requirements.txt
       - run:
           command: |
