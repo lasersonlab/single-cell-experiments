@@ -3,22 +3,20 @@
 # This dataproc initialization action lives at gs://ll-dataproc-initialization-actions/scanpy-dataproc-initialization-action.sh
 # gsutil cp scanpy-dataproc-initialization-action.sh gs://ll-dataproc-initialization-actions/scanpy-dataproc-initialization-action.sh
 
-# Based on https://github.com/GoogleCloudPlatform/dataproc-initialization-actions/tree/master/conda
+# Based on https://github.com/GoogleCloudPlatform/dataproc-initialization-actions/tree/master/jupyter
 
-gsutil -m cp -r gs://dataproc-initialization-actions/conda/bootstrap-conda.sh .
-gsutil -m cp -r gs://dataproc-initialization-actions/conda/install-conda-env.sh .
+gsutil -m cp -r gs://dataproc-initialization-actions/jupyter/jupyter.sh .
 
-chmod 755 ./*conda*.sh
+chmod 755 ./*.sh
 
-# Install Miniconda / conda
-./bootstrap-conda.sh
+./jupyter.sh
+
+# Install HDF5 headers, needed for the 'tables' python package
+apt-get install -y libhdf5-serial-dev
 
 # Update conda root environment with specific packages in pip and conda
 CONDA_PACKAGES='numpy'
-PIP_PACKAGES='gcsfs scanpy zarr'
-
-CONDA_PACKAGES=$CONDA_PACKAGES PIP_PACKAGES=$PIP_PACKAGES ./install-conda-env.sh
-
-# Install custom anndata with zarr support
+PIP_PACKAGES='gcsfs==0.1.1 scanpy==1.2.2 zarr==2.2.0 git+https://github.com/tomwhite/anndata@zarr'
 . /etc/profile.d/conda.sh
-(git clone https://github.com/tomwhite/anndata; cd anndata; git checkout -b zarr origin/zarr; pip install .)
+conda install $CONDA_PACKAGES
+pip install $PIP_PACKAGES
