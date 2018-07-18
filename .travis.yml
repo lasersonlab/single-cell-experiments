@@ -3,7 +3,7 @@ python: "3.6"
 env:
   global:
     - SPARK_HOME=spark-2.3.1-bin-hadoop2.7
-    - PYTHONPATH=anndata
+    - PYTHONPATH=anndata:scanpy
 git:
   submodules: false
 before_install:
