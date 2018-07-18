@@ -1,5 +1,4 @@
 pyspark
-scanpy
 zarr
 gcsfs
 s3fs
