@@ -1,3 +1,6 @@
 [submodule "src/anndata"]
 	path = anndata
 	url = https://github.com/ryan-williams/anndata
+[submodule "scanpy"]
+	path = scanpy
+	url = https://github.com/tomwhite/scanpy
