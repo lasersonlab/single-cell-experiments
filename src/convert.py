@@ -81,11 +81,11 @@ def build_chunks_map(o, chunk_size, axis = 0):
 
 
 def convert(
-        input,
-        output,
-        chunk_size=16 * 1024 * 1024,
-        genome=None,
-        overwrite=False
+    input,
+    output,
+    chunk_size=16 * 1024 * 1024,
+    genome=None,
+    overwrite=False
 ):
     if exists(output) and not overwrite:
         raise Exception(
@@ -116,7 +116,7 @@ def convert(
                 dest,
                 log=sys.stdout,
                 # possibly related to https://github.com/h5py/h5py/issues/973
-                without_attrs=(input_ext != '.h5'),
+                without_attrs=True,
                 chunks=chunks_map
             )
             zarr.tree(dest)
