@@ -10,7 +10,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('input',
                     help='Path to read from')
 parser.add_argument('output',
-                    help='Path to write to')
+                    default=None,
+                    nargs='?',
+                    help='Path to write to; defaults to "%s.zarr" % <input>')
 parser.add_argument('--genome', '-g',
                     dest='genome',
                     required=False,
@@ -49,7 +51,7 @@ def bytes_value(s):
 
 convert(
     args.input,
-    args.output,
+    args.output if args.output else (args.input + '.zarr'),
     genome=args.genome,
     chunk_size=bytes_value(args.chunks),
     overwrite=args.overwrite
