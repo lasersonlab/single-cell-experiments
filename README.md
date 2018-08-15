@@ -47,7 +47,6 @@ python3 -m venv venv  # python 3 is required!
 . venv/bin/activate
 pip install -r requirements.txt
 pip install ./scanpy # install dask branch of scanpy
-pip install ./anndata # install zarr branch of anndata
 ```
 
 Install and configure Spark 2.3.1:

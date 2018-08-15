@@ -3,12 +3,8 @@ python: "3.6"
 env:
   global:
     - SPARK_HOME=spark-2.3.1-bin-hadoop2.7
-    - PYTHONPATH=anndata:scanpy
 git:
   submodules: false
-before_install:
-  - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
-  - git submodule update --init --recursive
 install:
   - pip install -r requirements.txt
   - |
