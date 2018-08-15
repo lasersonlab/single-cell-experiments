@@ -112,6 +112,172 @@ Env vars:
 
 ![](https://cl.ly/0K0n0H132d3k/Screen%20Shot%202018-06-27%20at%205.45.12%20PM.png)
 
+## Demos
+
+All of the demos use Google Cloud, so you'll need an account there to run them.
+
+### 1. Scanpy on Spark in batch mode
+
+1. Start a five-node Dataproc cluster with the following. You'll need to change the environment
+variables to ones appropriate to your account. Notice the initialization actions that install
+the required Python packages on the cluster nodes.
+
+    ```bash
+    export DATAPROC_CLUSTER_NAME=ll-cluster-$USER
+    export PROJECT=hca-scale
+    export ZONE=us-east1-d
+    
+    gcloud dataproc --region us-east1 \
+        clusters create $DATAPROC_CLUSTER_NAME \
+        --zone $ZONE \
+        --master-machine-type n1-standard-1 \
+        --master-boot-disk-size 500 \
+        --num-workers 5 \
+        --worker-machine-type n1-standard-8 \
+        --worker-boot-disk-size 500 \
+        --image-version 1.2 \
+        --scopes 'https://www.googleapis.com/auth/cloud-platform' \
+        --project $PROJECT \
+        --metadata 'CONDA_PACKAGES=numpy,PIP_PACKAGES=gcsfs scanpy zarr git+https://github.com/tomwhite/anndata@zarr' \
+        --initialization-actions gs://dataproc-initialization-actions/conda/bootstrap-conda.sh,gs://dataproc-initialization-actions/conda/install-conda-env.sh
+    ```
+
+2. Run a simple Spark job. You will need to edit the output path in `scratch/cluster-log1p-anndata-gcs.py` to a
+GCS bucket that you have write permissions for before running this.
+
+    ```bash
+    gcloud dataproc jobs submit pyspark scratch/cluster-log1p-anndata-gcs.py \
+         --cluster=$DATAPROC_CLUSTER_NAME --region us-east1 --project $PROJECT \
+         --py-files=anndata_spark.py,scanpy_spark.py,zarr_spark.py
+    ```
+
+3. Run a Scanpy recipe. Again, you'll need to change the output path.
+
+    ```bash
+    gcloud dataproc jobs submit pyspark scratch/cluster-recipe-anndata-gcs.py \
+         --cluster=$DATAPROC_CLUSTER_NAME --region us-east1 --project $PROJECT \
+         --py-files=anndata_spark.py,scanpy_spark.py,zarr_spark.py
+    ```
+
+4. Delete the cluster when you've finished.
+
+    ```bash
+    gcloud dataproc --region us-east1 clusters delete --quiet $DATAPROC_CLUSTER_NAME
+    ```
+
+### 2. Scanpy on Spark with Jupyter
+
+1. Start a Dataproc cluster as before. The cluster takes longer to start since it is installing Jupyter in addition
+to application packages.
+
+    ```bash
+    export DATAPROC_CLUSTER_NAME=ll-cluster-$USER
+    export PROJECT=hca-scale
+    export ZONE=us-east1-d
+    
+    gcloud dataproc --region us-east1 \
+        clusters create $DATAPROC_CLUSTER_NAME \
+        --zone $ZONE \
+        --master-machine-type n1-standard-1 \
+        --master-boot-disk-size 500 \
+        --num-workers 5 \
+        --worker-machine-type n1-standard-8 \
+        --worker-boot-disk-size 500 \
+        --image-version 1.2 \
+        --scopes 'https://www.googleapis.com/auth/cloud-platform' \
+        --project $PROJECT \
+        --initialization-actions gs://ll-dataproc-initialization-actions/scanpy-dataproc-initialization-action.sh
+    ```
+
+2. Open a browser to the Jupyter web interface. This script opens a tunnel to the ports on the cluster.
+
+    ```bash
+    scripts/launch-jupyter-interface.sh
+    ```
+
+3. Upload and run a Jupyter notebook. From the Jupyter main page, upload `scratch/cluster-recipe-anndata-gcs.ipynb`
+   and run it. You can open another browser tab to track the job progress at `http://${DATAPROC_CLUSTER_NAME}-m:8088`.
+
+4. Delete the cluster when you've finished.
+
+    ```bash
+    gcloud dataproc --region us-east1 clusters delete --quiet $DATAPROC_CLUSTER_NAME
+    ```
+
+### 3. Scanpy on Dask with Jupyter
+
+These instructions are based on the [Dask and Kubernetes] documentation.
+
+1. Start a five-node Kubernetes cluster with the following. You'll need to change the environment
+variables to ones appropriate to your account.
+
+    ```bash
+    export K8S_CLUSTER_NAME=ll-k8s-cluster-$USER
+    export DASK_CLUSTER_NAME=ll-dask-cluster-$USER
+    export PROJECT=hca-scale
+    export ZONE=us-east1-b
+    export EMAIL=$USER@lasersonlab.org
+    
+    gcloud container clusters create $K8S_CLUSTER_NAME \
+        --num-nodes=5 \
+        --machine-type=n1-standard-8 \
+        --zone $ZONE \
+        --scopes 'https://www.googleapis.com/auth/cloud-platform' \
+        --project $PROJECT
+    ```
+
+2. Give your account super-user permissions.
+
+    ```bash
+    kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$EMAIL
+    ```
+
+3. Install Helm so we can use the Dask chart to install Dask.
+
+    ```bash
+    kubectl --namespace kube-system create sa tiller
+    kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+    helm init --service-account tiller
+    helm repo update
+    ```
+
+4. Create a vanilla Dask cluster.
+
+    ```bash
+    helm install --name $DASK_CLUSTER_NAME stable/dask
+    ```
+
+5. Upgrade the cluster to use our configuration (extra Python packages).
+
+    ```bash
+    helm upgrade $DASK_CLUSTER_NAME stable/dask -f scripts/dask-config.yaml
+    ```
+
+6. Wait until the cluster has started by checking its status with the following commands:
+
+    ```bash
+    kubectl get pods
+    kubectl get services
+    ```
+
+7. When the services are running, open the Jupyter web page using the external IP reported by
+   `kubectl get services` (port 80). The password is `dask`. You can open another tab to
+   monitor the Dask job (look for the service whose name ends with `scheduler`). 
+
+8. Upload and run a Jupyter notebook. From the Jupyter main page, upload `scratch/cluster-dask-recipe-anndata-gcs.ipynb`
+   and run it.
+
+9. Delete the Dask cluster when you've finished.
+
+    ```bash
+    helm delete $DASK_CLUSTER_NAME --purge
+    ```
+
+10. Delete the Kubernetes cluster.
+
+    ```bash
+    gcloud container clusters delete $K8S_CLUSTER_NAME --zone $ZONE --quiet
+    ```
 
 ## People
 - [Tom White](https://github.com/tomwhite/)
@@ -124,3 +290,4 @@ Env vars:
 [Scanpy]: http://scanpy.readthedocs.io/en/latest/
 [Apache Spark]: https://spark.apache.org/
 [Loom]: http://loompy.org/
+[Dask and Kubernetes]: http://dask.pydata.org/en/latest/setup/kubernetes-helm.html
