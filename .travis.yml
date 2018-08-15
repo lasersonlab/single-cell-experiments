@@ -14,7 +14,7 @@ install:
     else
       echo "Found existing Spark"
     fi
-script: python test_scanpy_spark.py
+script: python -m unittest
 cache: pip
 cache:
   directories:
