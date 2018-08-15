@@ -33,7 +33,7 @@ jobs:
       - run:
           command: |
             . venv/bin/activate
-            python test_scanpy_spark.py
+            python -m unittest
       - store_test_results:
           path: test-results
       - store_artifacts:

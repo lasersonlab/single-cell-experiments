@@ -123,7 +123,8 @@ class TestDask(unittest.TestCase):
             return (X - mean) / var
         scale(self.arr_d)
         scale(self.arr)
-        scale(self.arr_d).visualize(filename='task_graph.svg')
+        # Uncomment to produce a task graph
+        #scale(self.arr_d).visualize(filename='task_graph.svg')
         self.assertTrue(np.array_equal(self.arr_d.compute(), self.arr))
 
     def test_rechunk(self):

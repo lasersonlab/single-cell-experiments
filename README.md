@@ -46,7 +46,6 @@ Create and activate a Python 3 virtualenv, and install the requirements:
 python3 -m venv venv  # python 3 is required!
 . venv/bin/activate
 pip install -r requirements.txt
-pip install ./scanpy # install dask branch of scanpy
 ```
 
 Install and configure Spark 2.3.1:
@@ -60,7 +59,7 @@ export SPARK_HOME=spark-2.3.1-bin-hadoop2.7
 Run Tests:
 
 ```
-python test_scanpy_spark.py
+python -m unittest
 ```
 
 or a single test:
