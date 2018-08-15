@@ -1,3 +1,4 @@
+git+https://github.com/tomwhite/anndata@zarr
 pyspark
 zarr
 gcsfs

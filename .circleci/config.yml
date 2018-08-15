@@ -4,8 +4,6 @@ jobs:
     working_directory: ~/single-cell-experiments
     docker:
       - image: hancheng/circleci-python3.6-java8:browsers
-    environment:
-      PYTHONPATH: anndata:scanpy
     steps:
       - checkout
       - run: git submodule sync
@@ -18,9 +16,6 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
-            pushd anndata
-            pip install -r requires.txt
-            popd
       - run:
           command: |
             if [ ! -d "spark-2.3.1-bin-hadoop2.7" ]; then
