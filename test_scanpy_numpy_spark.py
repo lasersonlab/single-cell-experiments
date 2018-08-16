@@ -1,6 +1,6 @@
 import anndata as ad
 import logging
-import numpy_spark as np # numpy_spark includes everything in numpy, with some overrides and new functions
+import numpy_spark as np  # numpy_spark includes everything in numpy, with some overrides and new functions
 import numpy.testing as npt
 import tempfile
 import unittest
@@ -9,15 +9,16 @@ from pyspark.sql import SparkSession
 from scanpy.api.pp import *
 from zarr_spark import repartition_chunks
 
+
 def data_file(path):
-    return 'data/%s' % path
+    return "data/%s" % path
 
 
 def tmp_dir():
-    return tempfile.TemporaryDirectory('.zarr').name
+    return tempfile.TemporaryDirectory(".zarr").name
 
 
-input_file = data_file('10x-10k-subset.zarr')
+input_file = data_file("10x-10k-subset.zarr")
 
 
 class TestScanpySpark(unittest.TestCase):
@@ -25,15 +26,16 @@ class TestScanpySpark(unittest.TestCase):
     # based on https://blog.cambridgespark.com/unit-testing-with-pyspark-fb31671b1ad8
     @classmethod
     def suppress_py4j_logging(cls):
-        logger = logging.getLogger('py4j')
+        logger = logging.getLogger("py4j")
         logger.setLevel(logging.WARN)
 
     @classmethod
     def create_testing_pyspark_session(cls):
-        return (SparkSession.builder
-                .master('local[2]')
-                .appName('my-local-testing-pyspark-context')
-                .getOrCreate())
+        return (
+            SparkSession.builder.master("local[2]")
+            .appName("my-local-testing-pyspark-context")
+            .getOrCreate()
+        )
 
     @classmethod
     def setUpClass(cls):
@@ -46,9 +48,11 @@ class TestScanpySpark(unittest.TestCase):
         cls.spark.stop()
 
     def setUp(self):
-        self.adata = ad.read_zarr(input_file) # regular anndata
-        self.adata.X = self.adata.X[:] # convert to numpy array
-        self.adata_rdd = ad.read_zarr(input_file) # regular anndata except for X, which we replace on the next line
+        self.adata = ad.read_zarr(input_file)  # regular anndata
+        self.adata.X = self.adata.X[:]  # convert to numpy array
+        self.adata_rdd = ad.read_zarr(
+            input_file
+        )  # regular anndata except for X, which we replace on the next line
         self.adata_rdd.X = np.array_rdd_zarr(self.sc, input_file + "/X")
 
     def get_rdd_as_array(self):
@@ -116,7 +120,9 @@ class TestScanpySpark(unittest.TestCase):
         log1p(self.adata_rdd)
         output_file_zarr = tmp_dir()
         chunks = self.adata_rdd.X.chunks
-        self.adata.write_zarr(output_file_zarr, chunks) # write metadata using regular anndata
+        self.adata.write_zarr(
+            output_file_zarr, chunks
+        )  # write metadata using regular anndata
         self.adata_rdd.X.to_zarr(output_file_zarr + "/X", chunks)
         # read back as zarr (without using RDDs) and check it is the same as self.adata.X
         adata_log1p = ad.read_zarr(output_file_zarr)
@@ -124,5 +130,5 @@ class TestScanpySpark(unittest.TestCase):
         npt.assert_allclose(adata_log1p.X, self.adata.X)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

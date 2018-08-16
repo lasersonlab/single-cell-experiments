@@ -8,14 +8,14 @@ from scanpy_spark import *
 
 
 def data_file(path):
-    return 'data/%s' % path
+    return "data/%s" % path
 
 
 def tmp_dir():
-    return tempfile.TemporaryDirectory('.zarr').name
+    return tempfile.TemporaryDirectory(".zarr").name
 
 
-input_file = data_file('adata.csv')
+input_file = data_file("adata.csv")
 
 
 class TestScanpySpark(unittest.TestCase):
@@ -23,15 +23,16 @@ class TestScanpySpark(unittest.TestCase):
     # based on https://blog.cambridgespark.com/unit-testing-with-pyspark-fb31671b1ad8
     @classmethod
     def suppress_py4j_logging(cls):
-        logger = logging.getLogger('py4j')
+        logger = logging.getLogger("py4j")
         logger.setLevel(logging.WARN)
 
     @classmethod
     def create_testing_pyspark_session(cls):
-        return (SparkSession.builder
-                .master('local[2]')
-                .appName('my-local-testing-pyspark-context')
-                .getOrCreate())
+        return (
+            SparkSession.builder.master("local[2]")
+            .appName("my-local-testing-pyspark-context")
+            .getOrCreate()
+        )
 
     @classmethod
     def setUpClass(cls):
@@ -44,11 +45,12 @@ class TestScanpySpark(unittest.TestCase):
         cls.spark.stop()
 
     def setUp(self):
-        self.adata = ad.read_csv(input_file) # regular anndata
+        self.adata = ad.read_csv(input_file)  # regular anndata
         input_file_zarr = tmp_dir()
-        self.adata.write_zarr(input_file_zarr, chunks=(2, 5)) # write as zarr, so we can read using a RDD
+        self.adata.write_zarr(
+            input_file_zarr, chunks=(2, 5)
+        )  # write as zarr, so we can read using a RDD
         self.adata_rdd = AnnDataRdd.from_zarr(self.sc, input_file_zarr)
-
 
     def get_rdd_as_array(self):
         return np.concatenate(self.adata_rdd.rdd.collect())
@@ -103,5 +105,5 @@ class TestScanpySpark(unittest.TestCase):
         self.assertTrue(np.array_equal(adata_log1p.X, self.adata.X))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

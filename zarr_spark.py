@@ -17,42 +17,57 @@ from pyspark.mllib.linalg import Vectors
 # * Matrix multiplication. Multiplying by a matrix on the right preserves partitioning, so only chunk width needs to
 #   change.
 
+
 def get_chunk_indices(shape, chunks):
     """
     Return all the indices (coordinates) for the chunks in a zarr array, even empty ones.
     """
-    return [(i, j) for i in range(int(math.ceil(float(shape[0])/chunks[0])))
-            for j in range(int(math.ceil(float(shape[1])/chunks[1])))]
+    return [
+        (i, j)
+        for i in range(int(math.ceil(float(shape[0]) / chunks[0])))
+        for j in range(int(math.ceil(float(shape[1]) / chunks[1])))
+    ]
+
 
 def read_zarr_chunk(arr, chunks, chunk_index):
-    return arr[chunks[0]*chunk_index[0]:chunks[0]*(chunk_index[0]+1),chunks[1]*chunk_index[1]:chunks[1]*(chunk_index[1]+1)]
+    return arr[
+        chunks[0] * chunk_index[0] : chunks[0] * (chunk_index[0] + 1),
+        chunks[1] * chunk_index[1] : chunks[1] * (chunk_index[1] + 1),
+    ]
+
 
 def read_chunk(file):
     """
     Return a function to read a chunk by coordinates from the given file.
     """
+
     def read_one_chunk(chunk_index):
         """
         Read a zarr chunk specified by coordinates chunk_index=(a,b).
         """
-        z = zarr.open(file, mode='r')
+        z = zarr.open(file, mode="r")
         return read_zarr_chunk(z, z.chunks, chunk_index)
+
     return read_one_chunk
+
 
 def write_chunk(file):
     """
     Return a function to write a chunk by index to the given file.
     """
+
     def write_one_chunk(index_arr):
         """
         Write a partition index and numpy array to a zarr store. The array must be the size of a chunk, and not
         overlap other chunks.
         """
         index, arr = index_arr
-        z = zarr.open(file, mode='r+')
+        z = zarr.open(file, mode="r+")
         chunk_size = z.chunks
-        z[chunk_size[0]*index:chunk_size[0]*(index+1),:] = arr
+        z[chunk_size[0] * index : chunk_size[0] * (index + 1), :] = arr
+
     return write_one_chunk
+
 
 def zarr_file(sc, file):
     """
@@ -61,10 +76,11 @@ def zarr_file(sc, file):
     :param file: file path
     :return: an RDD of numpy arrays
     """
-    z = zarr.open(file, mode='r')
+    z = zarr.open(file, mode="r")
     ci = get_chunk_indices(z.shape, z.chunks)
     chunk_indices = sc.parallelize(ci, len(ci))
     return chunk_indices.map(read_chunk(file))
+
 
 def save_as_zarr_file(zarr_rdd, file):
     """
@@ -75,22 +91,29 @@ def save_as_zarr_file(zarr_rdd, file):
     """
     zarr_rdd.foreach(write_chunk(file))
 
+
 def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
     """
     Repartition an RDD of numpy arrays with uneven row sizes so that every partition has chunks[0] rows (except for the
     last, which may have fewer).
     This function should be used before saving in Zarr format, if rows have been added or removed.
     """
-    c = chunks[0] # the chunk size for rows
+    c = chunks[0]  # the chunk size for rows
 
     # Generate a list of offsets, so that k[i] is the number of rows before the i-th partition
     # Then turn this into a row range for each partition
     if partition_row_counts == None:
+
         def count_in_partition(iterator):
-            return [list(iterator)[0].shape[0]] # num rows in the matrix
+            return [list(iterator)[0].shape[0]]  # num rows in the matrix
+
         partition_row_counts = rows_rdd.mapPartitions(count_in_partition).collect()
-    if all([count == c for count in partition_row_counts[:-1]]): # if all except last partition have c rows...
-        return rows_rdd # ... then no need to shuffle, since already partitioned correctly
+    if all(
+        [count == c for count in partition_row_counts[:-1]]
+    ):  # if all except last partition have c rows...
+        return (
+            rows_rdd
+        )  # ... then no need to shuffle, since already partitioned correctly
     k = list(accumulate([0] + partition_row_counts))
     partition_row_ranges = list(zip(k, k[1:]))
     total_rows = k[-1]
@@ -107,13 +130,18 @@ def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
         key, val = list(iterator)[0]
         k_i, k_i_next = key
         tuples = []
-        for x in range(k_i - k_i % c, k_i_next, c): # iterate over overlapping chunks
+        for x in range(k_i - k_i % c, k_i_next, c):  # iterate over overlapping chunks
             start, end = max(k_i, x), min(k_i_next, x + c)
             start_offset, end_offset = start - k_i, end - k_i
             partial_chunk = val[start_offset:end_offset]
             new_index = start // c
-            new_start_offset, new_end_offset = start - new_index * c, end - new_index * c
-            tuples.append((new_index, ((new_start_offset, new_end_offset), partial_chunk)))
+            new_start_offset, new_end_offset = (
+                start - new_index * c,
+                end - new_index * c,
+            )
+            tuples.append(
+                (new_index, ((new_start_offset, new_end_offset), partial_chunk))
+            )
         return tuples
 
     def identity_partition_func(key):
@@ -124,7 +152,9 @@ def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
         Combine multiple non-overlapping parts of a new chunk into a single chunk.
         """
         new_index = pair[0]
-        if new_index == new_num_partitions - 1 and total_rows % c != 0: # last chunk has fewer than c rows
+        if (
+            new_index == new_num_partitions - 1 and total_rows % c != 0
+        ):  # last chunk has fewer than c rows
             last_chunk_rows = total_rows % c
             arr = np.zeros((last_chunk_rows, chunks[1]))
         else:
@@ -133,17 +163,21 @@ def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
             arr[new_start_offset:new_end_offset] = partial_chunk
         return arr
 
-    return sc.parallelize(partition_row_ranges, len(partition_row_ranges)) \
-        .zip(rows_rdd) \
-        .mapPartitions(extract_partial_chunks) \
-        .groupByKey(new_num_partitions, identity_partition_func) \
+    return (
+        sc.parallelize(partition_row_ranges, len(partition_row_ranges))
+        .zip(rows_rdd)
+        .mapPartitions(extract_partial_chunks)
+        .groupByKey(new_num_partitions, identity_partition_func)
         .map(combine_partial_chunks)
+    )
+
 
 def ndarray_to_vector(arr):
     """
     Convert a numpy array to a Spark Vector.
     """
     return [Vectors.dense(row) for row in arr.tolist()]
+
 
 def vectors_to_ndarray(index, vs):
     """
