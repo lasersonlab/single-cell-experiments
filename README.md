@@ -8,10 +8,6 @@ The work in this repository is exploratory and not suitable for production.
 
 ## Overview
 
-### [`anndata`](anndata)
-- a git submodule for [tomwhite/anndata](https://github.com/tomwhite/anndata)
-- WIP support for [AnnData] backed by [Zarr]
-
 ### [`anndata_spark.py`](anndata_spark.py)
 Provides `AnnDataRdd`, an [AnnData] implementation backed by a [Spark RDD](https://spark.apache.org/docs/2.3.1/rdd-programming-guide.html#resilient-distributed-datasets-rdds)
 
