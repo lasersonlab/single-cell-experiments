@@ -3,5 +3,5 @@ git+https://github.com/tomwhite/scanpy@dask-spark-1.2.2
 dask[array]
 pyspark
 zarr
-gcsfs
+git+https://github.com/lasersonlab/gcsfs@ac23549
 s3fs
