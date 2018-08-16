@@ -98,7 +98,7 @@ def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
 
     def extract_partial_chunks(iterator):
         """
-        For a given partition, we now know that start and end row numbers, so use that along with the new chunk size
+        For a given partition, we now know the start and end row numbers, so use that along with the new chunk size
         to break the rows into new (partial) chunks that are labelled with the new index number. Partial chunks will
         be shuffled using the new index number as key to bring together all the partial chunks for a given new index
         number.
@@ -124,8 +124,7 @@ def repartition_chunks(sc, rows_rdd, chunks, partition_row_counts=None):
         Combine multiple non-overlapping parts of a new chunk into a single chunk.
         """
         new_index = pair[0]
-        if new_index == new_num_partitions - 1:
-            # last chunk may have fewer than c rows
+        if new_index == new_num_partitions - 1 and total_rows % c != 0: # last chunk has fewer than c rows
             last_chunk_rows = total_rows % c
             arr = np.zeros((last_chunk_rows, chunks[1]))
         else:
