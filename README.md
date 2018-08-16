@@ -110,6 +110,16 @@ Env vars:
 
 ![](https://cl.ly/0K0n0H132d3k/Screen%20Shot%202018-06-27%20at%205.45.12%20PM.png)
 
+## Development
+
+We use [Black] to enforce Python style. If you edit any Python source, you can format it with
+
+```bash
+black *.py
+```
+
+The CI will fail any patch that is not correctly formatted.
+
 ## Demos
 
 All of the demos use Google Cloud, so you'll need an account there to run them.
@@ -289,3 +299,4 @@ variables to ones appropriate to your account.
 [Apache Spark]: https://spark.apache.org/
 [Loom]: http://loompy.org/
 [Dask and Kubernetes]: http://dask.pydata.org/en/latest/setup/kubernetes-helm.html
+[Black]: https://github.com/ambv/black

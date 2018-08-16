@@ -1,5 +1,6 @@
 git+https://github.com/tomwhite/anndata@zarr
 git+https://github.com/tomwhite/scanpy@dask-spark-1.2.2
+black
 dask[array]
 pyspark
 zarr

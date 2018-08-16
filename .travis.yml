@@ -14,9 +14,12 @@ install:
     else
       echo "Found existing Spark"
     fi
-script: python -m unittest
+script:
+  - black --check *.py
+  - python -m unittest
 cache: pip
 cache:
   directories:
     - spark-2.3.1-bin-hadoop2.7
+    - /home/travis/virtualenv/python3.6.3/bin
     - /home/travis/virtualenv/python3.6.3/lib/python3.6/site-packages
