@@ -8,24 +8,27 @@ import numpy as np
 import tempfile
 import unittest
 
+
 def data_file(path):
-    return 'data/%s' % path
+    return "data/%s" % path
 
 
 def tmp_dir():
-    return tempfile.TemporaryDirectory('.zarr').name
+    return tempfile.TemporaryDirectory(".zarr").name
 
 
-input_file = data_file('adata.csv')
+input_file = data_file("adata.csv")
+
 
 class TestDask(unittest.TestCase):
-
     def setUp(self):
-        self.arr = np.array([
-            [0.0,1.0,0.0,3.0,0.0],
-            [2.0,0.0,3.0,4.0,5.0],
-            [4.0,0.0,0.0,6.0,7.0]
-        ])
+        self.arr = np.array(
+            [
+                [0.0, 1.0, 0.0, 3.0, 0.0],
+                [2.0, 0.0, 3.0, 4.0, 5.0],
+                [4.0, 0.0, 0.0, 6.0, 7.0],
+            ]
+        )
         self.arr_d = da.from_array(self.arr.copy(), chunks=(2, 5))
 
     def test_scalar_arithmetic(self):
@@ -61,23 +64,23 @@ class TestDask(unittest.TestCase):
         self.assertTrue(np.array_equal(self.arr_d.compute(), self.arr))
 
     def test_boolean_index(self):
-        Xd = np.sum(self.arr_d, axis=1) # sum rows
+        Xd = np.sum(self.arr_d, axis=1)  # sum rows
         Xd = Xd[Xd > 5]
-        X = np.sum(self.arr, axis=1) # sum rows
+        X = np.sum(self.arr, axis=1)  # sum rows
         X = X[X > 5]
         self.assertTrue(np.array_equal(Xd.compute(), X))
 
     def test_subset_cols(self):
         subset = np.array([True, False, True, False, True])
-        Xd = self.arr_d[:,subset]
-        X = self.arr[:,subset]
+        Xd = self.arr_d[:, subset]
+        X = self.arr[:, subset]
         self.assertEqual(Xd.shape, X.shape)
         self.assertTrue(np.array_equal(Xd.compute(), X))
 
     def test_subset_rows(self):
         subset = np.array([True, False, True])
-        Xd = self.arr_d[subset,:]
-        X = self.arr[subset,:]
+        Xd = self.arr_d[subset, :]
+        X = self.arr[subset, :]
         self.assertEqual(Xd.shape, X.shape)
         self.assertTrue(np.array_equal(Xd.compute(), X))
 
@@ -99,6 +102,7 @@ class TestDask(unittest.TestCase):
     def test_mean(self):
         def mean(X):
             return X.mean(axis=0)
+
         meannps = mean(self.arr_d).compute()
         meannp = mean(self.arr)
         self.assertTrue(np.array_equal(meannps, meannp))
@@ -107,7 +111,8 @@ class TestDask(unittest.TestCase):
         def var(X):
             mean = X.mean(axis=0)
             mean_sq = np.multiply(X, X).mean(axis=0)
-            return mean_sq - mean**2
+            return mean_sq - mean ** 2
+
         varnps = var(self.arr_d).compute()
         varnp = var(self.arr)
         self.assertTrue(np.array_equal(varnps, varnp))
@@ -116,33 +121,28 @@ class TestDask(unittest.TestCase):
         def _get_mean_var(X):
             mean = X.mean(axis=0)
             mean_sq = np.multiply(X, X).mean(axis=0)
-            var = (mean_sq - mean**2) * (X.shape[0]/(X.shape[0]-1))
+            var = (mean_sq - mean ** 2) * (X.shape[0] / (X.shape[0] - 1))
             return mean, var
+
         def scale(X):
             mean, var = _get_mean_var(X)
             return (X - mean) / var
+
         scale(self.arr_d)
         scale(self.arr)
         # Uncomment to produce a task graph
-        #scale(self.arr_d).visualize(filename='task_graph.svg')
+        # scale(self.arr_d).visualize(filename='task_graph.svg')
         self.assertTrue(np.array_equal(self.arr_d.compute(), self.arr))
 
     def test_rechunk(self):
-        arr = np.array([
-            [0.0],
-            [1.0],
-            [2.0],
-            [3.0],
-            [4.0],
-            [5.0],
-            [6.0]
-        ])
+        arr = np.array([[0.0], [1.0], [2.0], [3.0], [4.0], [5.0], [6.0]])
         arr_d = da.from_array(arr.copy(), chunks=(3, 1))
         subset = np.array([True, True, False, True, True, True, True])
-        Xd = arr_d[subset,:]
+        Xd = arr_d[subset, :]
         self.assertEqual(Xd.chunks, ((2, 3, 1), (1,)))
         Xd = Xd.rechunk((3, 1))
         self.assertEqual(Xd.chunks, ((3, 3), (1,)))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

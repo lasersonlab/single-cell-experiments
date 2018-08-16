@@ -1,35 +1,38 @@
 import logging
-import numpy_spark as np # numpy_spark includes everything in numpy, with some overrides and new functions
+import numpy_spark as np  # numpy_spark includes everything in numpy, with some overrides and new functions
 import tempfile
 import unittest
 import zarr
 
 from pyspark.sql import SparkSession
 
+
 def data_file(path):
-    return 'data/%s' % path
+    return "data/%s" % path
 
 
 def tmp_dir():
-    return tempfile.TemporaryDirectory('.zarr').name
+    return tempfile.TemporaryDirectory(".zarr").name
 
 
-input_file = data_file('adata.csv')
+input_file = data_file("adata.csv")
+
 
 class TestNumpySpark(unittest.TestCase):
 
     # based on https://blog.cambridgespark.com/unit-testing-with-pyspark-fb31671b1ad8
     @classmethod
     def suppress_py4j_logging(cls):
-        logger = logging.getLogger('py4j')
+        logger = logging.getLogger("py4j")
         logger.setLevel(logging.WARN)
 
     @classmethod
     def create_testing_pyspark_session(cls):
-        return (SparkSession.builder
-                .master('local[2]')
-                .appName('my-local-testing-pyspark-context')
-                .getOrCreate())
+        return (
+            SparkSession.builder.master("local[2]")
+            .appName("my-local-testing-pyspark-context")
+            .getOrCreate()
+        )
 
     @classmethod
     def setUpClass(cls):
@@ -42,15 +45,23 @@ class TestNumpySpark(unittest.TestCase):
         cls.spark.stop()
 
     def setUp(self):
-        self.arr = np.array([
-            [0.0,1.0,0.0,3.0,0.0],
-            [2.0,0.0,3.0,4.0,5.0],
-            [4.0,0.0,0.0,6.0,7.0]
-        ])
+        self.arr = np.array(
+            [
+                [0.0, 1.0, 0.0, 3.0, 0.0],
+                [2.0, 0.0, 3.0, 4.0, 5.0],
+                [4.0, 0.0, 0.0, 6.0, 7.0],
+            ]
+        )
 
         input_file_zarr = tmp_dir()
-        z = zarr.open(input_file_zarr, mode='w', shape=self.arr.shape, dtype=self.arr.dtype, chunks=(2, 5))
-        z[:] = self.arr.copy() # write as zarr, so we can read using a RDD
+        z = zarr.open(
+            input_file_zarr,
+            mode="w",
+            shape=self.arr.shape,
+            dtype=self.arr.dtype,
+            chunks=(2, 5),
+        )
+        z[:] = self.arr.copy()  # write as zarr, so we can read using a RDD
 
         self.arr_rdd = np.array_rdd_zarr(self.sc, input_file_zarr)
 
@@ -87,23 +98,23 @@ class TestNumpySpark(unittest.TestCase):
         self.assertTrue(np.array_equal(self.arr_rdd.asndarray(), self.arr))
 
     def test_boolean_index(self):
-        Xr = np.sum(self.arr_rdd, axis=1) # sum rows
+        Xr = np.sum(self.arr_rdd, axis=1)  # sum rows
         Xr = Xr[Xr > 5]
-        X = np.sum(self.arr, axis=1) # sum rows
+        X = np.sum(self.arr, axis=1)  # sum rows
         X = X[X > 5]
         self.assertTrue(np.array_equal(Xr.asndarray(), X))
 
     def test_subset_cols(self):
         subset = np.array([True, False, True, False, True])
-        Xr = self.arr_rdd[:,subset]
-        X = self.arr[:,subset]
+        Xr = self.arr_rdd[:, subset]
+        X = self.arr[:, subset]
         self.assertEquals(Xr.shape, X.shape)
         self.assertTrue(np.array_equal(Xr.asndarray(), X))
 
     def test_subset_rows(self):
         subset = np.array([True, False, True])
-        Xr = self.arr_rdd[subset,:]
-        X = self.arr[subset,:]
+        Xr = self.arr_rdd[subset, :]
+        X = self.arr[subset, :]
         self.assertEquals(Xr.shape, X.shape)
         self.assertTrue(np.array_equal(Xr.asndarray(), X))
 
@@ -125,6 +136,7 @@ class TestNumpySpark(unittest.TestCase):
     def test_mean(self):
         def mean(X):
             return X.mean(axis=0)
+
         meannps = mean(self.arr_rdd).asndarray()
         meannp = mean(self.arr)
         self.assertTrue(np.array_equal(meannps, meannp))
@@ -133,10 +145,12 @@ class TestNumpySpark(unittest.TestCase):
         def var(X):
             mean = X.mean(axis=0)
             mean_sq = np.multiply(X, X).mean(axis=0)
-            return mean_sq - mean**2
+            return mean_sq - mean ** 2
+
         varnps = var(self.arr_rdd).asndarray()
         varnp = var(self.arr)
         self.assertTrue(np.array_equal(varnps, varnp))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

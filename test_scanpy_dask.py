@@ -6,23 +6,25 @@ import unittest
 
 from scanpy.api.pp import *
 
+
 def data_file(path):
-    return 'data/%s' % path
+    return "data/%s" % path
 
 
 def tmp_dir():
-    return tempfile.TemporaryDirectory('.zarr').name
+    return tempfile.TemporaryDirectory(".zarr").name
 
 
-input_file = data_file('10x-10k-subset.zarr')
+input_file = data_file("10x-10k-subset.zarr")
 
 
 class TestScanpyDask(unittest.TestCase):
-
     def setUp(self):
-        self.adata = ad.read_zarr(input_file) # regular anndata
-        self.adata.X = self.adata.X[:] # convert to numpy array
-        self.adata_d = ad.read_zarr(input_file) # regular anndata except for X, which we replace on the next line
+        self.adata = ad.read_zarr(input_file)  # regular anndata
+        self.adata.X = self.adata.X[:]  # convert to numpy array
+        self.adata_d = ad.read_zarr(
+            input_file
+        )  # regular anndata except for X, which we replace on the next line
         self.adata_d.X = da.from_zarr(input_file + "/X")
 
     def to_ndarray(self):
@@ -128,5 +130,5 @@ class TestScanpyDask(unittest.TestCase):
     #         self.assertTrue(np.array_equal(new_rows[i], rows[i]))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

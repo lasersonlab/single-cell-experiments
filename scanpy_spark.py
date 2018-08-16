@@ -1,5 +1,6 @@
 # An experiment to write a few scanpy (https://github.com/theislab/scanpy) APIs in Spark form
-
+# Turn Black formatting off so we preserve formatting to allow comparisons with original Scanpy
+# fmt: off
 import numpy as np
 import warnings
 
@@ -805,3 +806,5 @@ def recipe_zheng17(adata, n_top_genes=1000, log=True, plot=False, copy=False):
     scale(adata)
     print('    finished')
     return adata if copy else None
+
+# fmt: off
