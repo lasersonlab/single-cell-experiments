@@ -6,8 +6,6 @@ jobs:
       - image: hancheng/circleci-python3.6-java8:browsers
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init --recursive
       - run: sudo chown -R circleci:circleci /usr/local/bin /usr/local/lib/python3.6/site-packages
       - restore_cache:
           key: deps9-{{ .Branch }}-{{ checksum "requirements.txt" }}
