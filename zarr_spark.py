@@ -69,6 +69,28 @@ def write_chunk(file):
     return write_one_chunk
 
 
+def write_chunk_gcs(gcs_path, gcs_project, gcs_token):
+    """
+    Return a function to write a chunk by index to the given file.
+    """
+
+    def write_one_chunk(index_arr):
+        """
+        Write a partition index and numpy array to a zarr store. The array must be the size of a chunk, and not
+        overlap other chunks.
+        """
+        import gcsfs.mapping
+
+        gcs = gcsfs.GCSFileSystem(gcs_project, token=gcs_token)
+        store = gcsfs.mapping.GCSMap(gcs_path, gcs=gcs)
+        index, arr = index_arr
+        z = zarr.open(store, mode="r+")
+        chunk_size = z.chunks
+        z[chunk_size[0] * index : chunk_size[0] * (index + 1), :] = arr
+
+    return write_one_chunk
+
+
 def zarr_file(sc, file):
     """
     Read a zarr file as an RDD of numpy arrays.
