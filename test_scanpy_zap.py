@@ -1,13 +1,13 @@
 import anndata as ad
 import logging
-import numpy_spark as np  # numpy_spark includes everything in numpy, with some overrides and new functions
+import zap.base as np  # zap includes everything in numpy, with some overrides and new functions
+import zap.spark.array
 import numpy.testing as npt
 import tempfile
 import unittest
 
 from pyspark.sql import SparkSession
 from scanpy.api.pp import *
-from zarr_spark import repartition_chunks
 
 
 def data_file(path):
@@ -53,7 +53,7 @@ class TestScanpySpark(unittest.TestCase):
         self.adata_rdd = ad.read_zarr(
             input_file
         )  # regular anndata except for X, which we replace on the next line
-        self.adata_rdd.X = np.array_rdd_zarr(self.sc, input_file + "/X")
+        self.adata_rdd.X = zap.spark.array.array_rdd_zarr(self.sc, input_file + "/X")
 
     def get_rdd_as_array(self):
         return self.adata_rdd.X.asndarray()

@@ -1,8 +1,9 @@
 git+https://github.com/tomwhite/anndata@zarr
-git+https://github.com/tomwhite/scanpy@dask-spark-1.2.2
+git+https://github.com/tomwhite/scanpy@dask-zap-1.2.2
 black
 dask[array]
 pyspark
 zarr
 git+https://github.com/lasersonlab/gcsfs@ac23549
 s3fs
+git+https://github.com/lasersonlab/zap
