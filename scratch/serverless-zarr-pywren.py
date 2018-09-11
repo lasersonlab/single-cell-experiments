@@ -33,3 +33,9 @@ print(future.result())
 #     File "/tmp/pymodules/zarr/core.py", line 13, in <module>
 #     File "/tmp/pymodules/zarr/util.py", line 13, in <module>
 #     ModuleNotFoundError: No module named 'numcodecs'
+
+# To avoid this error, edit `~/.pywren_config` to use a special runtime:
+
+#runtime:
+#   s3_bucket: tom-pywren-runtimes
+#   s3_key: pywren.runtime/pywren_runtime-3.6-default.meta.json
