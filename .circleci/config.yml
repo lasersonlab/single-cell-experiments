@@ -32,7 +32,7 @@ jobs:
           command: |
             . venv/bin/activate
             black --check *.py
-            python -m unittest
+            pytest
       - store_test_results:
           path: test-results
       - store_artifacts:

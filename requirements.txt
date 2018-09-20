@@ -3,6 +3,7 @@ git+https://github.com/tomwhite/scanpy@dask-zap-1.2.2
 black
 dask[array]
 pyspark
+pytest
 zarr
 git+https://github.com/lasersonlab/gcsfs@ac23549
 s3fs

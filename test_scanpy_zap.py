@@ -1,134 +1,147 @@
 import anndata as ad
+import concurrent.futures
+import dask.array as da
 import logging
-import zap.base as np  # zap includes everything in numpy, with some overrides and new functions
-import zap.spark.array
 import numpy.testing as npt
-import tempfile
-import unittest
+import pytest
+import zap.base as np  # zap includes everything in numpy, with some overrides and new functions
+import zap.direct.array
+import zap.executor.array
+import zap.spark.array
+import zarr
 
 from pyspark.sql import SparkSession
 from scanpy.api.pp import *
+from scanpy.preprocessing.simple import materialize_as_ndarray
 
 
 def data_file(path):
     return "data/%s" % path
 
 
-def tmp_dir():
-    return tempfile.TemporaryDirectory(".zarr").name
-
-
 input_file = data_file("10x-10k-subset.zarr")
 
 
-class TestScanpySpark(unittest.TestCase):
-
-    # based on https://blog.cambridgespark.com/unit-testing-with-pyspark-fb31671b1ad8
-    @classmethod
-    def suppress_py4j_logging(cls):
+class TestScanpy:
+    @pytest.fixture(scope="module")
+    def sc(self):
+        # based on https://blog.cambridgespark.com/unit-testing-with-pyspark-fb31671b1ad8
         logger = logging.getLogger("py4j")
         logger.setLevel(logging.WARN)
-
-    @classmethod
-    def create_testing_pyspark_session(cls):
-        return (
+        spark = (
             SparkSession.builder.master("local[2]")
             .appName("my-local-testing-pyspark-context")
             .getOrCreate()
         )
+        yield spark.sparkContext
+        spark.stop()
 
-    @classmethod
-    def setUpClass(cls):
-        cls.suppress_py4j_logging()
-        cls.spark = cls.create_testing_pyspark_session()
-        cls.sc = cls.spark.sparkContext
+    @pytest.fixture()
+    def adata(self):
+        a = ad.read_zarr(input_file)  # regular anndata
+        a.X = a.X[:]  # convert to numpy array
+        return a
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.spark.stop()
+    # "pywren" tests do not yet all pass
+    @pytest.fixture(params=["direct", "executor", "spark", "dask"])
+    def adata_dist(self, sc, request):
+        # regular anndata except for X, which we replace on the next line
+        a = ad.read_zarr(input_file)
+        input_file_X = input_file + "/X"
+        if request.param == "direct":
+            a.X = zap.direct.array.from_zarr(input_file_X)
+            yield a
+        elif request.param == "executor":
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                a.X = zap.executor.array.from_zarr(executor, input_file_X)
+                yield a
+        elif request.param == "spark":
+            a.X = zap.spark.array.from_zarr(sc, input_file_X)
+            yield a
+        elif request.param == "dask":
+            a.X = da.from_zarr(input_file_X)
+            yield a
+        elif request.param == "pywren":
+            import s3fs.mapping
 
-    def setUp(self):
-        self.adata = ad.read_zarr(input_file)  # regular anndata
-        self.adata.X = self.adata.X[:]  # convert to numpy array
-        self.adata_rdd = ad.read_zarr(
-            input_file
-        )  # regular anndata except for X, which we replace on the next line
-        self.adata_rdd.X = zap.spark.array.array_rdd_zarr(self.sc, input_file + "/X")
+            s3 = s3fs.S3FileSystem()
+            input_file_X = s3fs.mapping.S3Map(
+                "sc-tom-test-data/10x-10k-subset.zarr/X", s3=s3
+            )
+            executor = zap.executor.array.PywrenExecutor()
+            a.X = zap.executor.array.from_zarr(executor, input_file_X)
+            yield a
 
-    def get_rdd_as_array(self):
-        return self.adata_rdd.X.asndarray()
+    def test_log1p(self, adata, adata_dist):
+        log1p(adata_dist)
+        result = materialize_as_ndarray(adata_dist.X)
+        log1p(adata)
+        assert result.shape == adata.shape
+        assert result.shape == (adata.n_obs, adata.n_vars)
+        npt.assert_allclose(result, adata.X)
 
-    def test_log1p(self):
-        log1p(self.adata_rdd)
-        result = self.get_rdd_as_array()
-        log1p(self.adata)
-        self.assertEqual(result.shape, self.adata.shape)
-        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-        npt.assert_allclose(result, self.adata.X)
+    def test_normalize_per_cell(self, adata, adata_dist):
+        normalize_per_cell(adata_dist)
+        result = materialize_as_ndarray(adata_dist.X)
+        normalize_per_cell(adata)
+        assert result.shape == adata.shape
+        assert result.shape == (adata.n_obs, adata.n_vars)
+        npt.assert_allclose(result, adata.X)
 
-    def test_normalize_per_cell(self):
-        normalize_per_cell(self.adata_rdd)
-        result = self.get_rdd_as_array()
-        normalize_per_cell(self.adata)
-        self.assertEqual(result.shape, self.adata.shape)
-        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-        npt.assert_allclose(result, self.adata.X)
+    def test_filter_cells(self, adata, adata_dist):
+        filter_cells(adata_dist, min_genes=3)
+        result = materialize_as_ndarray(adata_dist.X)
+        filter_cells(adata, min_genes=3)
+        assert result.shape == adata.shape
+        assert result.shape == (adata.n_obs, adata.n_vars)
+        npt.assert_allclose(result, adata.X)
 
-    def test_filter_cells(self):
-        filter_cells(self.adata_rdd, min_genes=3)
-        result = self.get_rdd_as_array()
-        filter_cells(self.adata, min_genes=3)
-        self.assertEqual(result.shape, self.adata.shape)
-        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-        npt.assert_allclose(result, self.adata.X)
+    def test_filter_genes(self, adata, adata_dist):
+        filter_genes(adata_dist, min_cells=2)
+        result = materialize_as_ndarray(adata_dist.X)
+        filter_genes(adata, min_cells=2)
+        assert result.shape == adata.shape
+        assert result.shape == (adata.n_obs, adata.n_vars)
+        npt.assert_allclose(result, adata.X)
 
-    def test_filter_genes(self):
-        filter_genes(self.adata_rdd, min_cells=2)
-        result = self.get_rdd_as_array()
-        filter_genes(self.adata, min_cells=2)
-        self.assertEqual(result.shape, self.adata.shape)
-        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-        npt.assert_allclose(result, self.adata.X)
+    # # this fails when running on test data
+    # def test_filter_genes_dispersion(self, adata, adata_dist):
+    #     filter_genes_dispersion(adata_dist, flavor='cell_ranger', n_top_genes=500, log=False)
+    #     result = materialize_as_ndarray(adata_dist.X)
+    #     filter_genes_dispersion(adata, flavor='cell_ranger', n_top_genes=500, log=False)
+    #     assert result.shape, adata.shape
+    #     assert result.shape, (adata.n_obs, adata.n_vars)
+    #     npt.assert_allclose(result, adata.X)
 
-    # this fails when running on test data
-    # def test_filter_genes_dispersion(self):
-    #     filter_genes_dispersion(self.adata_rdd, flavor='cell_ranger', n_top_genes=500, log=False)
-    #     result = self.get_rdd_as_array()
-    #     filter_genes_dispersion(self.adata, flavor='cell_ranger', n_top_genes=500, log=False)
-    #     self.assertEqual(result.shape, self.adata.shape)
-    #     self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-    #     npt.assert_allclose(result, self.adata.X)
+    def test_scale(self, adata, adata_dist):
+        scale(adata_dist)
+        result = materialize_as_ndarray(adata_dist.X)
+        scale(adata)
+        assert result.shape == adata.shape
+        assert result.shape == (adata.n_obs, adata.n_vars)
+        npt.assert_allclose(result, adata.X)
 
-    def test_scale(self):
-        scale(self.adata_rdd)
-        result = self.get_rdd_as_array()
-        scale(self.adata)
-        self.assertEqual(result.shape, self.adata.shape)
-        self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-        npt.assert_allclose(result, self.adata.X)
+    # # this fails when running on test data
+    # def test_recipe_zheng17(self, adata, adata_dist):
+    #     recipe_zheng17(adata_dist, n_top_genes=500)
+    #     result = materialize_as_ndarray(adata_dist.X)
+    #     recipe_zheng17(adata, n_top_genes=500)
+    #     assert result.shape, adata.shape
+    #     assert result.shape, (adata.n_obs, adata.n_vars)
+    #     npt.assert_allclose(result, adata.X)
 
-    # this fails when running on test data
-    # def test_recipe_zheng17(self):
-    #     recipe_zheng17(self.adata_rdd, n_top_genes=500)
-    #     result = self.get_rdd_as_array()
-    #     recipe_zheng17(self.adata, n_top_genes=500)
-    #     self.assertEqual(result.shape, self.adata.shape)
-    #     self.assertEqual(result.shape, (self.adata.n_obs, self.adata.n_vars))
-    #     npt.assert_allclose(result, self.adata.X)
-
-    def test_write_zarr(self):
-        log1p(self.adata_rdd)
-        output_file_zarr = tmp_dir()
-        chunks = self.adata_rdd.X.chunks
-        self.adata.write_zarr(
-            output_file_zarr, chunks
-        )  # write metadata using regular anndata
-        self.adata_rdd.X.to_zarr(output_file_zarr + "/X", chunks)
-        # read back as zarr (without using RDDs) and check it is the same as self.adata.X
-        adata_log1p = ad.read_zarr(output_file_zarr)
-        log1p(self.adata)
-        npt.assert_allclose(adata_log1p.X, self.adata.X)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_write_zarr(self, adata, adata_dist):
+        log1p(adata_dist)
+        temp_store = zarr.TempStore()
+        chunks = adata_dist.X.chunks
+        print(chunks)
+        # write metadata using regular anndata
+        adata.write_zarr(temp_store, chunks)
+        if isinstance(adata_dist.X, da.Array):
+            adata_dist.X.to_zarr(temp_store.dir_path("X"))
+        else:
+            adata_dist.X.to_zarr(temp_store.dir_path("X"), chunks)
+        # read back as zarr (without using RDDs) and check it is the same as adata.X
+        adata_log1p = ad.read_zarr(temp_store)
+        log1p(adata)
+        npt.assert_allclose(adata_log1p.X, adata.X)
