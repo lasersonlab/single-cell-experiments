@@ -142,7 +142,3 @@ class TestDask(unittest.TestCase):
         self.assertEqual(Xd.chunks, ((2, 3, 1), (1,)))
         Xd = Xd.rechunk((3, 1))
         self.assertEqual(Xd.chunks, ((3, 3), (1,)))
-
-
-if __name__ == "__main__":
-    unittest.main()

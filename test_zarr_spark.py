@@ -95,7 +95,3 @@ class TestZarrSpark(unittest.TestCase):
         ]
         for i in range(len(new_rows_expected)):
             self.assertTrue(np.array_equal(new_rows[i], new_rows_expected[i]))
-
-
-if __name__ == "__main__":
-    unittest.main()

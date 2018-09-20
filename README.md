@@ -55,13 +55,13 @@ export SPARK_HOME=spark-2.3.1-bin-hadoop2.7
 Run Tests:
 
 ```
-python -m unittest
+pytest
 ```
 
-or a single test:
+or only run particular tests, e.g.
 
 ```
-python -m unittest test_scanpy_spark.TestScanpySpark.test_log1p
+pytest -k test_log1p
 ```
 
 ### Troubleshooting

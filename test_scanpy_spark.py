@@ -103,7 +103,3 @@ class TestScanpySpark(unittest.TestCase):
         adata_log1p = ad.read_zarr(output_file_zarr)
         log1p(self.adata)
         self.assertTrue(np.array_equal(adata_log1p.X, self.adata.X))
-
-
-if __name__ == "__main__":
-    unittest.main()

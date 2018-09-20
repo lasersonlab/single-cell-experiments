@@ -14,7 +14,7 @@ install:
     fi
 script:
   - black --check *.py
-  - python -m unittest
+  - pytest
 cache: pip
 cache:
   directories:
