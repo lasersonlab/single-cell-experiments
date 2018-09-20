@@ -15,9 +15,7 @@ install:
 script:
   - black --check *.py
   - pytest
-cache: pip
 cache:
   directories:
     - spark-2.3.1-bin-hadoop2.7
     - /home/travis/virtualenv/python3.6.3/bin
-    - /home/travis/virtualenv/python3.6.3/lib/python3.6/site-packages
