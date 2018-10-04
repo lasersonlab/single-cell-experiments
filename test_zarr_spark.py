@@ -34,9 +34,9 @@ class TestZarrSpark(unittest.TestCase):
 
     def test_repartition_chunks_no_op(self):
         old_rows = [
-            np.array([[1.], [2.], [3.]]),
-            np.array([[4.], [5.], [6.]]),
-            np.array([[7.], [8.]]),
+            np.array([[1.0], [2.0], [3.0]]),
+            np.array([[4.0], [5.0], [6.0]]),
+            np.array([[7.0], [8.0]]),
         ]
         old_rows_rdd = self.sc.parallelize(old_rows, len(old_rows))
         new_rows_rdd = repartition_chunks(self.sc, old_rows_rdd, (3, 1))
@@ -46,52 +46,52 @@ class TestZarrSpark(unittest.TestCase):
 
     def test_repartition_chunks_uneven(self):
         old_rows = [
-            np.array([[1.], [2.], [3.], [4.]]),
-            np.array([[5.], [6.], [7.]]),
-            np.array([[8.], [9.], [10.], [11.]]),
+            np.array([[1.0], [2.0], [3.0], [4.0]]),
+            np.array([[5.0], [6.0], [7.0]]),
+            np.array([[8.0], [9.0], [10.0], [11.0]]),
         ]
         old_rows_rdd = self.sc.parallelize(old_rows, len(old_rows))
         new_rows_rdd = repartition_chunks(self.sc, old_rows_rdd, (3, 1))
         new_rows = new_rows_rdd.collect()
         new_rows_expected = [
-            np.array([[1.], [2.], [3.]]),
-            np.array([[4.], [5.], [6.]]),
-            np.array([[7.], [8.], [9.]]),
-            np.array([[10.], [11.]]),
+            np.array([[1.0], [2.0], [3.0]]),
+            np.array([[4.0], [5.0], [6.0]]),
+            np.array([[7.0], [8.0], [9.0]]),
+            np.array([[10.0], [11.0]]),
         ]
         for i in range(len(new_rows_expected)):
             self.assertTrue(np.array_equal(new_rows[i], new_rows_expected[i]))
 
     def test_repartition_chunks_subdivide(self):
         old_rows = [
-            np.array([[1.], [2.], [3.], [4.]]),
-            np.array([[5.], [6.], [7.], [8.]]),
+            np.array([[1.0], [2.0], [3.0], [4.0]]),
+            np.array([[5.0], [6.0], [7.0], [8.0]]),
         ]
         old_rows_rdd = self.sc.parallelize(old_rows, len(old_rows))
         new_rows_rdd = repartition_chunks(self.sc, old_rows_rdd, (2, 1))
         new_rows = new_rows_rdd.collect()
         new_rows_expected = [
-            np.array([[1.], [2.]]),
-            np.array([[3.], [4.]]),
-            np.array([[5.], [6.]]),
-            np.array([[7.], [8.]]),
+            np.array([[1.0], [2.0]]),
+            np.array([[3.0], [4.0]]),
+            np.array([[5.0], [6.0]]),
+            np.array([[7.0], [8.0]]),
         ]
         for i in range(len(new_rows_expected)):
             self.assertTrue(np.array_equal(new_rows[i], new_rows_expected[i]))
 
     def test_repartition_chunks_coalesce(self):
         old_rows = [
-            np.array([[1.], [2.]]),
-            np.array([[3.], [4.]]),
-            np.array([[5.], [6.]]),
-            np.array([[7.], [8.]]),
+            np.array([[1.0], [2.0]]),
+            np.array([[3.0], [4.0]]),
+            np.array([[5.0], [6.0]]),
+            np.array([[7.0], [8.0]]),
         ]
         old_rows_rdd = self.sc.parallelize(old_rows, len(old_rows))
         new_rows_rdd = repartition_chunks(self.sc, old_rows_rdd, (4, 1))
         new_rows = new_rows_rdd.collect()
         new_rows_expected = [
-            np.array([[1.], [2.], [3.], [4.]]),
-            np.array([[5.], [6.], [7.], [8.]]),
+            np.array([[1.0], [2.0], [3.0], [4.0]]),
+            np.array([[5.0], [6.0], [7.0], [8.0]]),
         ]
         for i in range(len(new_rows_expected)):
             self.assertTrue(np.array_equal(new_rows[i], new_rows_expected[i]))
