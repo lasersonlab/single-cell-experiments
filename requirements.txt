@@ -1,8 +1,8 @@
-git+https://github.com/tomwhite/anndata@zarr
-git+https://github.com/tomwhite/scanpy@dask-zap-1.2.2
+anndata>=0.6.10
+git+https://github.com/theislab/scanpy
 black
 dask[array]
-pyspark
+pyspark==2.3.1
 pytest
 zarr
 git+https://github.com/lasersonlab/gcsfs@ac23549
