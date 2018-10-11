@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-from src.convert import convert
-
 import argparse
 import re
 
+from convert import convert
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="Path to read from")

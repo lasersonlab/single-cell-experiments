@@ -5,6 +5,6 @@ dask[array]
 pyspark==2.3.1
 pytest
 zarr
-git+https://github.com/lasersonlab/gcsfs@ac23549
+gcsfs # git+https://github.com/lasersonlab/gcsfs@ac23549 for requestor pays support
 s3fs
 git+https://github.com/lasersonlab/zap
