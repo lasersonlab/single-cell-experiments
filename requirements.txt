@@ -1,4 +1,4 @@
-anndata>=0.6.10
+git+https://github.com/theislab/anndata # anndata>=0.6.10
 git+https://github.com/theislab/scanpy
 black
 dask[array]
@@ -7,4 +7,4 @@ pytest
 zarr
 gcsfs # git+https://github.com/lasersonlab/gcsfs@ac23549 for requestor pays support
 s3fs
-git+https://github.com/lasersonlab/zap
+zappy

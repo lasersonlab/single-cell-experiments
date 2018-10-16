@@ -4,10 +4,10 @@ import dask.array as da
 import logging
 import numpy.testing as npt
 import pytest
-import zap.base as np  # zap includes everything in numpy, with some overrides and new functions
-import zap.direct
-import zap.executor
-import zap.spark
+import zappy.base as np  # zappy includes everything in numpy, with some overrides and new functions
+import zappy.direct
+import zappy.executor
+import zappy.spark
 import zarr
 
 from pyspark.sql import SparkSession
@@ -50,14 +50,14 @@ class TestScanpy:
         a = ad.read_zarr(input_file)
         input_file_X = input_file + "/X"
         if request.param == "direct":
-            a.X = zap.direct.from_zarr(input_file_X)
+            a.X = zappy.direct.from_zarr(input_file_X)
             yield a
         elif request.param == "executor":
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                a.X = zap.executor.from_zarr(executor, input_file_X)
+                a.X = zappy.executor.from_zarr(executor, input_file_X)
                 yield a
         elif request.param == "spark":
-            a.X = zap.spark.from_zarr(sc, input_file_X)
+            a.X = zappy.spark.from_zarr(sc, input_file_X)
             yield a
         elif request.param == "dask":
             a.X = da.from_zarr(input_file_X)
@@ -69,8 +69,8 @@ class TestScanpy:
             input_file_X = s3fs.mapping.S3Map(
                 "sc-tom-test-data/10x-10k-subset.zarr/X", s3=s3
             )
-            executor = zap.executor.PywrenExecutor()
-            a.X = zap.executor.from_zarr(executor, input_file_X)
+            executor = zappy.executor.PywrenExecutor()
+            a.X = zappy.executor.from_zarr(executor, input_file_X)
             yield a
 
     def test_log1p(self, adata, adata_dist):

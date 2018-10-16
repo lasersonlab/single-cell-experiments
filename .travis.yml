@@ -14,7 +14,7 @@ install:
     fi
 script:
   - black --check *.py
-  - pytest test_convert.py test_dask.py test_scanpy_zap.py test_show_meta.py
+  - pytest test_convert.py test_dask.py test_scanpy_zappy.py test_show_meta.py
 cache:
   directories:
     - spark-2.3.1-bin-hadoop2.7
