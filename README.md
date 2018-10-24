@@ -130,13 +130,14 @@ the required Python packages on the cluster nodes.
     export DATAPROC_CLUSTER_NAME=ll-cluster-$USER
     export PROJECT=hca-scale
     export ZONE=us-east1-d
+    export NUM_WORKERS=5
     
     gcloud dataproc --region us-east1 \
         clusters create $DATAPROC_CLUSTER_NAME \
         --zone $ZONE \
-        --master-machine-type n1-standard-1 \
+        --master-machine-type n1-standard-4 \
         --master-boot-disk-size 500 \
-        --num-workers 5 \
+        --num-workers $NUM_WORKERS \
         --worker-machine-type n1-standard-8 \
         --worker-boot-disk-size 500 \
         --image-version 1.2 \
