@@ -1,0 +1,9 @@
+*.pyc
+.ipynb_checkpoints
+__pycache__
+cache
+files
+results
+spark-*
+venv
+venv2

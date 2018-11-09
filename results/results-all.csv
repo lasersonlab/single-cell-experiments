@@ -1,0 +1,17 @@
+worker_cores,input_row_count,input_path,output_path,success,duration
+2,10000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=2/input=10x_10000.zarr,True,133.2852921485901
+2,100000,ll-sc-data-bkup/10x/anndata_zarr/10x_100000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=2/input=10x_100000.zarr,True,930.0832221508026
+8,10000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=8/input=10x_10000.zarr,True,112.35380506515503
+8,100000,ll-sc-data-bkup/10x/anndata_zarr/10x_100000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=8/input=10x_100000.zarr,True,270.1855561733246
+8,1000000,ll-sc-data-bkup/10x/anndata_zarr/10x_1000000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=8/input=10x_1000000.zarr,True,2309.919093847275
+32,10000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=32/input=10x_10000.zarr,True,121.593416929245
+32,100000,ll-sc-data-bkup/10x/anndata_zarr/10x_100000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=32/input=10x_100000.zarr,True,125.15136981010437
+32,1000000,ll-sc-data-bkup/10x/anndata_zarr/10x_1000000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=32/input=10x_1000000.zarr,True,689.956953048706
+128,10000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=128/input=10x_10000.zarr,True,112.84826588630676
+128,100000,ll-sc-data-bkup/10x/anndata_zarr/10x_100000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=128/input=10x_100000.zarr,True,119.94552707672119
+128,1000000,ll-sc-data-bkup/10x/anndata_zarr/10x_1000000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=128/input=10x_1000000.zarr,True,240.17691588401794
+128,10000000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-103933/cores=128/input=10x_10000000.zarr,True,2699.900803089142
+512,10000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=512/input=10x_10000.zarr,True,115.58799576759338
+512,100000,ll-sc-data-bkup/10x/anndata_zarr/10x_100000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=512/input=10x_100000.zarr,True,124.65325379371643
+512,1000000,ll-sc-data-bkup/10x/anndata_zarr/10x_1000000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=512/input=10x_1000000.zarr,True,155.23543095588684
+512,10000000,ll-sc-data-bkup/10x/anndata_zarr/10x_10000000.zarr,ll-sc-data-bkup/10x/anndata_zarr_out/run=20181101-093948/cores=512/input=10x_10000000.zarr,True,1314.812961101532
