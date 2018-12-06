@@ -7,7 +7,7 @@ pytest
 zarr
 gcsfs # git+https://github.com/lasersonlab/gcsfs@ac23549 for requestor pays support
 s3fs
-zappy
+git+https://github.com/lasersonlab/zappy
 google-api-python-client
 google-cloud
 google-cloud-storage
