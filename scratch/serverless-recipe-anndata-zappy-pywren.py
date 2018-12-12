@@ -6,6 +6,8 @@ import zappy.executor
 executor = zappy.executor.PywrenExecutor(live_viewer=True, exclude_modules=None, ignore_modules=['dash', 'dash_html_components', 'dash_core_components', 'dask', 'google_auth_oauthlib', 'pandas', 'pytest'])
 
 s3 = s3fs.S3FileSystem()
+if s3.exists('sc-tom-test-data/10x-log1p.zarr'):
+    s3.rm('sc-tom-test-data/10x-log1p.zarr', recursive=True)
 input_zarr = s3fs.mapping.S3Map('sc-tom-test-data/10x/anndata_zarr_2000/10x.zarr', s3=s3)
 input_zarr_X = s3fs.mapping.S3Map('sc-tom-test-data/10x/anndata_zarr_2000/10x.zarr/X', s3=s3)
 intermediate_zarr = s3fs.mapping.S3Map('sc-tom-test-data/intermediate.zarr', s3=s3)

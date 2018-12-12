@@ -3,6 +3,8 @@ import zappy.base as np
 import zappy.executor
 
 s3 = s3fs.S3FileSystem()
+if s3.exists('sc-tom-test-data/10x-log1p.zarr'):
+    s3.rm('sc-tom-test-data/10x-log1p.zarr', recursive=True)
 input_zarr = s3fs.mapping.S3Map('sc-tom-test-data/10x/anndata_zarr_2000/10x.zarr/X', s3=s3)
 output_zarr = s3fs.mapping.S3Map('sc-tom-test-data/10x-log1p.zarr', s3=s3)
 
