@@ -12,7 +12,7 @@ import zarr
 
 from pyspark.sql import SparkSession
 from scanpy.api.pp import *
-from scanpy.preprocessing.simple import materialize_as_ndarray
+from scanpy.preprocessing._distributed import materialize_as_ndarray
 
 
 def data_file(path):
